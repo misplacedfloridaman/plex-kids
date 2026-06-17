@@ -9,7 +9,7 @@ export default function PlexKidsLogo() {
         style={{ height: "75px", width: "auto", display: "block" }}
       />
       <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px", fontWeight: "600", letterSpacing: "0.06em" }}>
-        v3.7.5
+        v3.7.6
       </span>
     </div>
   );

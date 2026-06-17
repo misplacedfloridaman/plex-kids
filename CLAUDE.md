@@ -8,7 +8,7 @@ A YouTube Kids-style web app that streams from a local Plex Media Server, packag
 
 The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kids/plex-kids/`. This directory is the Docker port of that app — tested and confirmed working.
 
-**Current version: v3.7.5** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
+**Current version: v3.7.6** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
 
 **v3.0.0 = Plex-native architecture:** Tailscale Serve (private delivery), Plex Home managed users for identity, and Plex timeline progress sync (Continue Watching = Plex On Deck; localStorage progress retired). Favorites remain local. Remaining v3 work (Phase D): OAuth login flow + open-source prep. See the plan file `nice-seems-to-be-agile-snowglobe.md`.
 
@@ -40,6 +40,7 @@ The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kid
 | v3.7.3 | Docs: document changing the host port in `docker-compose.example.yml` (HOST:CONTAINER mapping; change left side, or set `PORT` + update healthcheck for the internal port) and a README note. Docs only — no app change. |
 | v3.7.4 | Privacy/cleanup (post open-source audit): genericized `PROFILE_COSMETICS` to `{}` with an example comment (removed real first names; Plex profile photos are the real icons anyway); vite dev `allowedHosts: true` (was a personal hostname; dev-only). Public git history rewritten to a clean snapshot to scrub the names from prior commits. |
 | v3.7.5 | Docs: explain the optional autoheal sidecar (healthcheck = detector, autoheal = actuator; restarts unhealthy containers; Docker-socket caveat) in README + MIGRATION.md. Docs only — no app change. |
+| v3.7.6 | New PWA app icon (orange Plex play-chevron + "Kids"): replaced `public/icon.png` (apple-touch-icon) and `public/icon.svg` (manifest); bumped apple-touch cache-buster to `?v=3`; manifest `purpose` → `any` (finished icon with its own background; avoids maskable cropping) + added a PNG manifest entry for Android. |
 
 **Planned: offline downloads** — deferred. The library is MKV; Safari cannot play MKV natively. Blocked until a transcoding or format solution is found.
 

@@ -1,5 +1,3 @@
-
-
 {
   "name": "Plex Kids",
   "short_name": "Plex Kids",
@@ -14,7 +12,13 @@
       "src": "/icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
