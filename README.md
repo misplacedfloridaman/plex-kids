@@ -63,6 +63,21 @@ tailscale serve --bg http://localhost:6767
 Kids' devices just need the Tailscale app and the resulting `https://<host>.<tailnet>.ts.net`
 URL. (Tailscale **Funnel** would make it public — not recommended for a kids' app.)
 
+## Auto-recovery with autoheal (optional)
+
+The compose file gives `plex-kids` a **healthcheck** (it pings `/healthz` every 30s). On its own,
+Docker only *labels* the container `healthy`/`unhealthy` — it doesn't act on it, and
+`restart: unless-stopped` only kicks in if the process actually exits, not if it's alive but wedged.
+
+The optional **autoheal** sidecar (`willfarrell/autoheal`) closes that gap: it watches for
+containers labeled `autoheal=true` (which `plex-kids` is) and **restarts any that go `unhealthy`** —
+so a hung app recovers on its own within a minute, no manual intervention. Think of it as
+healthcheck = detector, autoheal = actuator.
+
+Uncomment the `autoheal` service block at the bottom of `docker-compose.example.yml` to enable it.
+Note it mounts the Docker socket (`/var/run/docker.sock`) so it can issue restarts — a common,
+well-understood pattern, but be aware that socket access is effectively host root.
+
 ## Useful commands
 
 ```bash
