@@ -1,0 +1,56 @@
+services:
+  plex-kids:
+    # Pulls the prebuilt multi-arch image — no clone or local build needed.
+    # To build from source instead (for development), comment this out and use `build: .`.
+    image: ghcr.io/misplacedfloridaman/plex-kids:latest
+    # build: .
+    container_name: plex-kids
+    ports:
+      # Format is HOST:CONTAINER. Change the LEFT number to serve on a different port
+      # (e.g. "8080:6767" → browse on :8080). Leave the right side as 6767 — that's the
+      # port the app listens on inside the container. (To change the internal port too,
+      # set PORT=<n> below, match the right side, and update the healthcheck URL.)
+      - "6767:6767"
+    environment:
+      # Plex Media Server URL reachable from inside the container. THE ONE REQUIRED VALUE.
+      # Use the host's LAN IP (not localhost) — e.g. http://192.168.1.100:32400 —
+      # or http://host.docker.internal:32400 on Docker Desktop for Mac/Windows.
+      - PLEX_SERVER=http://192.168.1.x:32400
+      # SESSION_SECRET is OPTIONAL. If unset, the app generates a strong one on first
+      # boot and persists it to the /config volume. Set it only if you want to pin a
+      # specific value (e.g. to keep sessions valid across volume resets):
+      # - SESSION_SECRET=generate-with: openssl rand -hex 32
+      # PLEX_TOKEN is OPTIONAL. On first run, open the app, tap the settings gear and
+      # "Sign in with Plex" — that bootstraps the admin token (saved to the /config
+      # volume below). Set a token here only if you want a startup fallback.
+      # - PLEX_TOKEN=your-plex-token
+      # ALLOWED_LIBRARIES is OPTIONAL. Leave it unset to let each Plex managed user's
+      # own library access decide what they see (recommended). Set it only to further
+      # restrict beyond Plex, e.g.:
+      # - ALLOWED_LIBRARIES=Family Movies,Kids Shows
+    volumes:
+      # Persists the admin token, settings PIN, hidden profiles, and per-profile home
+      # layouts across rebuilds. Keep this — losing it means re-signing-in to bootstrap.
+      - ./plex-kids-config:/config
+    restart: unless-stopped
+    labels:
+      # Watched by the optional autoheal sidecar below.
+      - autoheal=true
+    healthcheck:
+      # Node one-liner (native fetch in node:20) — recycled if the event loop hangs.
+      test: ["CMD", "node", "-e", "fetch('http://localhost:6767/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # Optional: restart plex-kids automatically if it goes unhealthy. A healthcheck alone
+  # only marks the container unhealthy; this sidecar acts on it. Uncomment to enable.
+  # autoheal:
+  #   image: willfarrell/autoheal
+  #   container_name: autoheal
+  #   restart: unless-stopped
+  #   environment:
+  #     - AUTOHEAL_CONTAINER_LABEL=autoheal
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock

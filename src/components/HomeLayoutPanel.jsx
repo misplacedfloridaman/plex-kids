@@ -1,0 +1,110 @@
+import { useState } from "react";
+
+// Per-profile home customization: toggle rails on/off and choose which libraries feed
+// the Wild Card feed. If the admin locked layout editing, a PIN is required first.
+const SECTION_LABELS = [
+  ["continueWatching", "Continue Watching"],
+  ["nextUp", "Next Up"],
+  ["recentlyAdded", "Recently Added"],
+  ["watchAgain", "Watch Again"],
+  ["favorites", "Favorites"],
+  ["libraries", "A row for each library"],
+  ["shortPicks", "Short Picks (under 10 min)"],
+];
+
+export default function HomeLayoutPanel({ layout, libraries, onClose }) {
+  const [needPin, setNeedPin] = useState(!!layout.locked && !layout.unlocked);
+  const [pin, setPin] = useState("");
+  const [pinErr, setPinErr] = useState("");
+  const [sections, setSections] = useState({ ...layout.sections });
+  const [wild, setWild] = useState(new Set(
+    layout.wildcardLibraries && layout.wildcardLibraries.length
+      ? layout.wildcardLibraries
+      : libraries.map((l) => l.name)
+  ));
+  const [saving, setSaving] = useState(false);
+
+  async function unlock() {
+    setPinErr("");
+    const r = await (await fetch("/api/admin/pin/verify", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }),
+    })).json();
+    if (r.ok) setNeedPin(false);
+    else { setPinErr("Wrong PIN."); setPin(""); }
+  }
+
+  function toggleSection(key) {
+    setSections((s) => ({ ...s, [key]: !s[key] }));
+  }
+  function toggleWild(name) {
+    setWild((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/home/layout", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections, wildcardLibraries: [...wild] }),
+      });
+      if (!res.ok) throw new Error();
+      onClose(true);
+    } catch { setSaving(false); }
+  }
+
+  const btn = { border: "none", borderRadius: "999px", padding: "12px 28px", fontSize: "16px", fontWeight: "800", cursor: "pointer" };
+  const shell = { minHeight: "100vh", background: "#000", color: "#fff", fontFamily: "sans-serif", display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 24px", boxSizing: "border-box" };
+  const row = { display: "flex", alignItems: "center", gap: "16px", padding: "12px 16px", background: "rgba(255,255,255,0.06)", borderRadius: "16px" };
+  const sectionTitle = { color: "rgba(255,255,255,0.5)", fontSize: "13px", fontWeight: "800", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 14px 0", alignSelf: "flex-start" };
+  const toggleBtn = (on) => ({ ...btn, padding: "8px 18px", fontSize: "14px", background: on ? "#22c55e" : "rgba(255,255,255,0.12)", color: on ? "#04210f" : "rgba(255,255,255,0.6)" });
+
+  if (needPin) {
+    return (
+      <div style={shell}>
+        <h2 style={{ fontSize: "28px", fontWeight: "900", margin: "0 0 8px 0" }}>Home layout is locked</h2>
+        <p style={{ color: "rgba(255,255,255,0.5)", margin: "0 0 24px 0" }}>Enter the PIN to change it</p>
+        <input type="password" inputMode="numeric" autoFocus value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+          onKeyDown={(e) => e.key === "Enter" && unlock()}
+          style={{ fontSize: "28px", letterSpacing: "0.3em", textAlign: "center", padding: "12px 16px", borderRadius: "14px", border: "2px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.06)", color: "#fff", width: "200px" }} />
+        <div style={{ color: "#fca5a5", minHeight: "20px", margin: "8px 0" }}>{pinErr}</div>
+        <div style={{ display: "flex", gap: "16px" }}>
+          <button onClick={() => onClose(false)} style={{ ...btn, background: "rgba(255,255,255,0.12)", color: "#fff" }}>Back</button>
+          <button onClick={unlock} style={{ ...btn, background: "#6366f1", color: "#fff" }}>Unlock</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={shell}>
+      <h2 style={{ fontSize: "30px", fontWeight: "900", margin: "0 0 36px 0" }}>Customize Home</h2>
+      <div style={{ width: "100%", maxWidth: "460px", display: "flex", flexDirection: "column", gap: "32px" }}>
+        <section style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <p style={sectionTitle}>Show these rows</p>
+          {SECTION_LABELS.map(([key, label]) => (
+            <div key={key} style={row}>
+              <span style={{ flex: 1, fontSize: "18px", fontWeight: "700" }}>{label}</span>
+              <button onClick={() => toggleSection(key)} style={toggleBtn(!!sections[key])}>{sections[key] ? "On" : "Off"}</button>
+            </div>
+          ))}
+        </section>
+
+        <section style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <p style={sectionTitle}>Wild Card pulls from</p>
+          {libraries.map((l) => (
+            <div key={l.name} style={row}>
+              <span style={{ flex: 1, fontSize: "18px", fontWeight: "700" }}>{l.name}</span>
+              <button onClick={() => toggleWild(l.name)} style={toggleBtn(wild.has(l.name))}>{wild.has(l.name) ? "Included" : "Off"}</button>
+            </div>
+          ))}
+        </section>
+      </div>
+
+      <div style={{ display: "flex", gap: "16px", marginTop: "40px" }}>
+        <button onClick={() => onClose(false)} style={{ ...btn, background: "rgba(255,255,255,0.12)", color: "#fff" }}>Cancel</button>
+        <button onClick={save} disabled={saving} style={{ ...btn, background: "#6366f1", color: "#fff", opacity: saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save"}</button>
+      </div>
+    </div>
+  );
+}

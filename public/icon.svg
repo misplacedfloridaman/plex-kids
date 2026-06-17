@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 512 512">
+  <!-- Generator: Adobe Illustrator 30.4.0, SVG Export Plug-In . SVG Version: 2.1.4 Build 226)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #facc15;
+      }
+
+      .st1 {
+        fill: url(#linear-gradient);
+      }
+
+      .st2 {
+        fill: #111827;
+      }
+
+      .st3 {
+        opacity: .7;
+      }
+
+      .st3, .st4, .st5 {
+        fill: #fff;
+        isolation: isolate;
+      }
+
+      .st4 {
+        opacity: .9;
+      }
+
+      .st5 {
+        opacity: .8;
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="0" y1="514" x2="512" y2="2" gradientTransform="translate(0 514) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect class="st1" width="512" height="512" rx="120" ry="120"/>
+  <circle class="st0" cx="256" cy="256" r="140"/>
+  <polygon class="st2" points="209 190 339 256 209 322 209 190"/>
+  <circle class="st4" cx="170" cy="170" r="22"/>
+  <circle class="st3" cx="360" cy="150" r="14"/>
+  <circle class="st5" cx="390" cy="360" r="18"/>
+</svg>

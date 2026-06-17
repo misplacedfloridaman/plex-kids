@@ -1,0 +1,31 @@
+# Secrets — never commit
+.env
+docker-compose.yml
+
+# Runtime config volume — holds the persisted admin token + PIN + settings
+plex-kids-config/
+config/
+
+# Personal migration notes (kept local, not part of the public repo)
+MIGRATION.md
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

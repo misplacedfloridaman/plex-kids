@@ -1,0 +1,20 @@
+
+
+{
+  "name": "Plex Kids",
+  "short_name": "Plex Kids",
+  "description": "A kid-friendly local Plex frontend",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
