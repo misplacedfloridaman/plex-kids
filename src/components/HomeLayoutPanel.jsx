@@ -8,8 +8,8 @@ const SECTION_LABELS = [
   ["recentlyAdded", "Recently Added"],
   ["watchAgain", "Watch Again"],
   ["favorites", "Favorites"],
-  ["libraries", "A row for each library"],
   ["shortPicks", "Short Picks (under 10 min)"],
+  ["wildCard", "Wild Card (endless random picks)"],
 ];
 
 export default function HomeLayoutPanel({ layout, libraries, onClose }) {
@@ -21,6 +21,10 @@ export default function HomeLayoutPanel({ layout, libraries, onClose }) {
     layout.wildcardLibraries && layout.wildcardLibraries.length
       ? layout.wildcardLibraries
       : libraries.map((l) => l.name)
+  ));
+  // libraryRows: null = every library gets its own row (default); else the explicit list.
+  const [rows, setRows] = useState(new Set(
+    layout.libraryRows == null ? libraries.map((l) => l.name) : layout.libraryRows
   ));
   const [saving, setSaving] = useState(false);
 
@@ -39,13 +43,16 @@ export default function HomeLayoutPanel({ layout, libraries, onClose }) {
   function toggleWild(name) {
     setWild((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
   }
+  function toggleRow(name) {
+    setRows((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+  }
 
   async function save() {
     setSaving(true);
     try {
       const res = await fetch("/api/home/layout", {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sections, wildcardLibraries: [...wild] }),
+        body: JSON.stringify({ sections, libraryRows: [...rows], wildcardLibraries: [...wild] }),
       });
       if (!res.ok) throw new Error();
       onClose(true);
@@ -91,11 +98,15 @@ export default function HomeLayoutPanel({ layout, libraries, onClose }) {
         </section>
 
         <section style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          <p style={sectionTitle}>Wild Card pulls from</p>
+          <p style={{ ...sectionTitle, marginBottom: "6px" }}>Libraries</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", margin: "0 0 8px 0", alignSelf: "flex-start" }}>
+            Give each library its own row, feed it into Wild Card, or both. (Green = on.)
+          </p>
           {libraries.map((l) => (
-            <div key={l.name} style={row}>
-              <span style={{ flex: 1, fontSize: "18px", fontWeight: "700" }}>{l.name}</span>
-              <button onClick={() => toggleWild(l.name)} style={toggleBtn(wild.has(l.name))}>{wild.has(l.name) ? "Included" : "Off"}</button>
+            <div key={l.name} style={{ ...row, flexWrap: "wrap" }}>
+              <span style={{ flex: 1, fontSize: "18px", fontWeight: "700", minWidth: "110px" }}>{l.name}</span>
+              <button onClick={() => toggleRow(l.name)} style={toggleBtn(rows.has(l.name))}>Own row</button>
+              <button onClick={() => toggleWild(l.name)} style={toggleBtn(wild.has(l.name))}>Wild Card</button>
             </div>
           ))}
         </section>

@@ -58,15 +58,23 @@ const DEFAULT_HOME_LAYOUT = {
     nextUp: true,
     recentlyAdded: true,
     watchAgain: true,
-    libraries: true,
     shortPicks: true,
+    wildCard: true,
   },
+  libraryRows: null,     // null = a row for every accessible library; [] = none; or an explicit list of names
   wildcardLibraries: [], // [] = all the profile's accessible libraries
 };
 function getHomeLayout(uuid) {
   const saved = (loadSettings().homeLayouts || {})[uuid];
+  // libraryRows: an explicit array of library names (incl. []), or null = every accessible library
+  // gets its own row. Migrate the old blanket `libraries` toggle: false => no rows; else default.
+  let libraryRows;
+  if (saved && "libraryRows" in saved) libraryRows = saved.libraryRows;
+  else if (saved?.sections?.libraries === false) libraryRows = [];
+  else libraryRows = null;
   return {
     sections: { ...DEFAULT_HOME_LAYOUT.sections, ...(saved?.sections || {}) },
+    libraryRows,
     wildcardLibraries: saved?.wildcardLibraries || [],
   };
 }
@@ -75,6 +83,7 @@ function setHomeLayout(uuid, layout) {
   const layouts = { ...(s.homeLayouts || {}) };
   layouts[uuid] = {
     sections: { ...DEFAULT_HOME_LAYOUT.sections, ...(layout?.sections || {}) },
+    libraryRows: Array.isArray(layout?.libraryRows) ? layout.libraryRows.map(String) : null,
     wildcardLibraries: Array.isArray(layout?.wildcardLibraries) ? layout.wildcardLibraries.map(String) : [],
   };
   saveSettings({ ...s, homeLayouts: layouts });
@@ -781,10 +790,32 @@ app.get("/api/nextup", async (req, res) => {
 app.get("/api/recently-added", async (req, res) => {
   try {
     const d = await fetchPlexJson("/library/recentlyAdded", activeToken(req));
-    const items = (d.MediaContainer.Metadata || [])
-      .filter((m) => libraryAllowed(m.librarySectionTitle))
-      .map(formatPlexItem)
-      .slice(0, 20);
+    const raw = (d.MediaContainer.Metadata || []).filter((m) => libraryAllowed(m.librarySectionTitle));
+    // Condense episodes/seasons up to their show, so a show appears once instead of once per
+    // season (e.g. several "Franklin" seasons collapse to a single Franklin card).
+    const seen = new Set();
+    const items = [];
+    for (const m of raw) {
+      if (m.type === "episode" || m.type === "season") {
+        const showKey = m.grandparentRatingKey || m.parentRatingKey; // episode→show, season→show
+        if (!showKey || seen.has(String(showKey))) continue;
+        seen.add(String(showKey));
+        items.push({
+          ...formatPlexItem(m),
+          key: String(showKey),
+          type: "show", // tapping drills into the show (children), not straight to playback
+          title: m.grandparentTitle || m.parentTitle || m.title,
+          thumb: m.grandparentThumb || m.parentThumb || m.thumb,
+          grandparentTitle: null,
+          viewOffset: null, duration: null, progress: null,
+        });
+      } else {
+        if (seen.has(String(m.ratingKey))) continue;
+        seen.add(String(m.ratingKey));
+        items.push(formatPlexItem(m));
+      }
+      if (items.length >= 20) break;
+    }
     res.json({ items });
   } catch (err) {
     console.error("Failed to fetch recently added", err.message);

@@ -382,8 +382,11 @@ function App() {
   // Which home rails to show (defaults to all on until the layout loads).
   const homeSections = homeLayout?.sections ?? {
     favorites: true, continueWatching: true, nextUp: true,
-    recentlyAdded: true, watchAgain: true, libraries: true, shortPicks: true,
+    recentlyAdded: true, watchAgain: true, shortPicks: true, wildCard: true,
   };
+  // Which libraries get their own row: null/undefined = all accessible libraries; else the list.
+  const libraryRows = homeLayout?.libraryRows;
+  const showLibraryRow = (name) => libraryRows == null || libraryRows.includes(name);
 
   const playerProps = {
     playerShellRef: player.playerShellRef,
@@ -650,22 +653,24 @@ function App() {
           {homeSections.watchAgain && (
             <Rail title="Watch Again" url="/api/watch-again" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
           )}
-          {homeSections.libraries && libraries.map((lib) => (
+          {libraries.filter((lib) => showLibraryRow(lib.name)).map((lib) => (
             <Rail key={lib.key} title={lib.name} url={`/api/library-rail?library=${encodeURIComponent(lib.name)}`} onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
           ))}
           {homeSections.shortPicks && (
             <Rail title="Short Picks" url="/api/short-picks" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
           )}
 
-          <section style={gridSectionStyle}>
-            <h2 style={railTitleStyle}>Wild Card</h2>
-            <RecommendedFeed
-              onPlay={playItem}
-              favorites={favorites}
-              onToggleFavorite={toggleFavorite}
-              apiServer={API_SERVER}
-            />
-          </section>
+          {homeSections.wildCard && (
+            <section style={gridSectionStyle}>
+              <h2 style={railTitleStyle}>Wild Card</h2>
+              <RecommendedFeed
+                onPlay={playItem}
+                favorites={favorites}
+                onToggleFavorite={toggleFavorite}
+                apiServer={API_SERVER}
+              />
+            </section>
+          )}
         </>
       )}
     </div>
