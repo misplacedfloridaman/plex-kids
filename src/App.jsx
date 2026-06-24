@@ -661,7 +661,7 @@ function App() {
         </section>
       ) : (
         <>
-          {sectionOrder.map((token) => homeSectionEls[token]?.() || null)}
+          {[...sectionOrder.filter((t) => t !== "wildCard"), "wildCard"].map((token) => homeSectionEls[token]?.() || null)}
         </>
       )}
     </div>

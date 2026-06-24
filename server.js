@@ -67,6 +67,9 @@ function normalizeSectionOrder(order) {
     }
   }
   for (const k of DEFAULT_SECTION_ORDER) if (!seen.has(k)) result.push(k);
+  // Wild Card is an endless feed — any row after it would be unreachable, so pin it last.
+  const wc = result.indexOf("wildCard");
+  if (wc !== -1 && wc !== result.length - 1) { result.splice(wc, 1); result.push("wildCard"); }
   return result;
 }
 

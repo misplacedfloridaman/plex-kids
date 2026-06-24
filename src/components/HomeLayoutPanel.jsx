@@ -23,8 +23,9 @@ export default function HomeLayoutPanel({ layout, libraries, onClose }) {
   const [pin, setPin] = useState("");
   const [pinErr, setPinErr] = useState("");
   const [sections, setSections] = useState({ ...layout.sections });
+  // Wild Card is pinned last (endless feed), so it's kept out of the movable list.
   const [order, setOrder] = useState(
-    layout.sectionOrder?.length ? layout.sectionOrder.slice() : DEFAULT_ORDER.slice()
+    (layout.sectionOrder?.length ? layout.sectionOrder : DEFAULT_ORDER).filter((k) => k !== "wildCard")
   );
   const [wild, setWild] = useState(new Set(
     layout.wildcardLibraries && layout.wildcardLibraries.length
@@ -70,7 +71,7 @@ export default function HomeLayoutPanel({ layout, libraries, onClose }) {
     try {
       const res = await fetch("/api/home/layout", {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sections, sectionOrder: order, libraryRows: [...rows], wildcardLibraries: [...wild] }),
+        body: JSON.stringify({ sections, sectionOrder: [...order, "wildCard"], libraryRows: [...rows], wildcardLibraries: [...wild] }),
       });
       if (!res.ok) throw new Error();
       onClose(true);
@@ -123,6 +124,18 @@ export default function HomeLayoutPanel({ layout, libraries, onClose }) {
                 : <button onClick={() => toggleSection(key)} style={toggleBtn(!!sections[key])}>{sections[key] ? "On" : "Off"}</button>}
             </div>
           ))}
+          {/* Wild Card is pinned to the bottom: it's an endless feed, so any row below it
+              would never be reached. Toggleable, but not movable. */}
+          <div style={row}>
+            <div style={{ width: "34px", flexShrink: 0, textAlign: "center", fontSize: "16px" }} aria-hidden="true">🔒</div>
+            <span style={{ flex: 1, fontSize: "18px", fontWeight: "700" }}>
+              {SECTION_LABELS.wildCard}
+              <span style={{ display: "block", fontSize: "13px", fontWeight: "400", color: "rgba(255,255,255,0.45)" }}>
+                Always last — the endless feed never ends
+              </span>
+            </span>
+            <button onClick={() => toggleSection("wildCard")} style={toggleBtn(!!sections.wildCard)}>{sections.wildCard ? "On" : "Off"}</button>
+          </div>
         </section>
 
         <section style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
