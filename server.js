@@ -50,7 +50,27 @@ function saveSettings(settings) {
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
 }
 
-// Per-profile home-page layout. Default: every rail on, Wild Card from all libraries.
+// The home rows, in their default top-to-bottom order. "libraries" = the block of per-library
+// rows. sectionOrder (below) lets each profile rearrange these; on/off stays in `sections`.
+const DEFAULT_SECTION_ORDER = [
+  "favorites", "continueWatching", "nextUp", "recentlyAdded",
+  "watchAgain", "libraries", "shortPicks", "wildCard",
+];
+// Sanitize a stored/incoming order: keep only known keys (no dupes), then append any known
+// keys it's missing — so old saved layouts and newly-added sections both stay complete.
+function normalizeSectionOrder(order) {
+  const seen = new Set();
+  const result = [];
+  if (Array.isArray(order)) {
+    for (const k of order) {
+      if (DEFAULT_SECTION_ORDER.includes(k) && !seen.has(k)) { seen.add(k); result.push(k); }
+    }
+  }
+  for (const k of DEFAULT_SECTION_ORDER) if (!seen.has(k)) result.push(k);
+  return result;
+}
+
+// Per-profile home-page layout. Default: every rail on, default order, Wild Card from all libraries.
 const DEFAULT_HOME_LAYOUT = {
   sections: {
     favorites: true,
@@ -61,6 +81,7 @@ const DEFAULT_HOME_LAYOUT = {
     shortPicks: true,
     wildCard: true,
   },
+  sectionOrder: DEFAULT_SECTION_ORDER,
   libraryRows: null,     // null = a row for every accessible library; [] = none; or an explicit list of names
   wildcardLibraries: [], // [] = all the profile's accessible libraries
 };
@@ -74,6 +95,7 @@ function getHomeLayout(uuid) {
   else libraryRows = null;
   return {
     sections: { ...DEFAULT_HOME_LAYOUT.sections, ...(saved?.sections || {}) },
+    sectionOrder: normalizeSectionOrder(saved?.sectionOrder),
     libraryRows,
     wildcardLibraries: saved?.wildcardLibraries || [],
   };
@@ -83,6 +105,7 @@ function setHomeLayout(uuid, layout) {
   const layouts = { ...(s.homeLayouts || {}) };
   layouts[uuid] = {
     sections: { ...DEFAULT_HOME_LAYOUT.sections, ...(layout?.sections || {}) },
+    sectionOrder: normalizeSectionOrder(layout?.sectionOrder),
     libraryRows: Array.isArray(layout?.libraryRows) ? layout.libraryRows.map(String) : null,
     wildcardLibraries: Array.isArray(layout?.wildcardLibraries) ? layout.wildcardLibraries.map(String) : [],
   };

@@ -11,7 +11,6 @@ import {
   backButtonStyle,
   searchWrapStyle,
   searchInputStyle,
-  librariesNavButtonStyle,
 } from "./styles";
 
 import Player from "./components/Player";
@@ -396,6 +395,55 @@ function App() {
   // Which libraries get their own row: null/undefined = all accessible libraries; else the list.
   const libraryRows = homeLayout?.libraryRows;
   const showLibraryRow = (name) => libraryRows == null || libraryRows.includes(name);
+  // Top-to-bottom order of the home rows (per profile); default until the layout loads.
+  const sectionOrder = homeLayout?.sectionOrder ?? [
+    "favorites", "continueWatching", "nextUp", "recentlyAdded",
+    "watchAgain", "libraries", "shortPicks", "wildCard",
+  ];
+  // Each token → its row (or false/[] when off/empty). Rendered in sectionOrder below.
+  const homeSectionEls = {
+    favorites: () => homeSections.favorites && favorites.length > 0 && (
+      <section key="favorites" style={gridSectionStyle}>
+        <h2 style={railTitleStyle}>Favorites</h2>
+        <div style={railStyle}>
+          {favorites.map((item) => (
+            <MediaCard key={item.key} item={item} onPlay={playItem} apiServer={API_SERVER} horizontal isFavorite={true} onToggleFavorite={toggleFavorite} />
+          ))}
+        </div>
+      </section>
+    ),
+    continueWatching: () => homeSections.continueWatching && continueWatchingItems.length > 0 && (
+      <section key="continueWatching" style={gridSectionStyle}>
+        <h2 style={railTitleStyle}>Continue Watching</h2>
+        <div style={railStyle}>
+          {continueWatchingItems.map((item) => (
+            <MediaCard key={item.key} item={item} onPlay={playItem} apiServer={API_SERVER} horizontal subtitle={`${Math.round(item.progress * 100)}% watched`} isFavorite={favoriteKeys.has(item.key)} onToggleFavorite={toggleFavorite} onRemove={removeContinueWatching} />
+          ))}
+        </div>
+      </section>
+    ),
+    nextUp: () => homeSections.nextUp && (
+      <Rail key="nextUp" title="Next Up" url="/api/nextup" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
+    ),
+    recentlyAdded: () => homeSections.recentlyAdded && (
+      <Rail key="recentlyAdded" title="Recently Added" url="/api/recently-added" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
+    ),
+    watchAgain: () => homeSections.watchAgain && (
+      <Rail key="watchAgain" title="Watch Again" url="/api/watch-again" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
+    ),
+    libraries: () => libraries.filter((lib) => showLibraryRow(lib.name)).map((lib) => (
+      <Rail key={lib.key} title={lib.name} url={`/api/library-rail?library=${encodeURIComponent(lib.name)}`} onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
+    )),
+    shortPicks: () => homeSections.shortPicks && (
+      <Rail key="shortPicks" title="Short Picks" url="/api/short-picks" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
+    ),
+    wildCard: () => homeSections.wildCard && (
+      <section key="wildCard" style={gridSectionStyle}>
+        <h2 style={railTitleStyle}>Wild Card</h2>
+        <RecommendedFeed onPlay={playItem} favorites={favorites} onToggleFavorite={toggleFavorite} apiServer={API_SERVER} />
+      </section>
+    ),
+  };
 
   const playerProps = {
     playerShellRef: player.playerShellRef,
@@ -558,8 +606,8 @@ function App() {
           <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowHomeLayout(true)} title="Customize home">
             ✨
           </button>
-          <button style={librariesNavButtonStyle} onClick={() => setShowLibraryPicker(true)}>
-            📚 Libraries
+          <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowLibraryPicker(true)} title="Libraries" aria-label="Libraries">
+            📚
           </button>
         </div>
       </div>
@@ -613,73 +661,7 @@ function App() {
         </section>
       ) : (
         <>
-          {homeSections.favorites && favorites.length > 0 && (
-            <section style={gridSectionStyle}>
-              <h2 style={railTitleStyle}>Favorites</h2>
-              <div style={railStyle}>
-                {favorites.map((item) => (
-                  <MediaCard
-                    key={item.key}
-                    item={item}
-                    onPlay={playItem}
-                    apiServer={API_SERVER}
-                    horizontal
-                    isFavorite={true}
-                    onToggleFavorite={toggleFavorite}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {homeSections.continueWatching && continueWatchingItems.length > 0 && (
-            <section style={gridSectionStyle}>
-              <h2 style={railTitleStyle}>Continue Watching</h2>
-              <div style={railStyle}>
-                {continueWatchingItems.map((item) => (
-                  <MediaCard
-                    key={item.key}
-                    item={item}
-                    onPlay={playItem}
-                    apiServer={API_SERVER}
-                    horizontal
-                    subtitle={`${Math.round(item.progress * 100)}% watched`}
-                    isFavorite={favoriteKeys.has(item.key)}
-                    onToggleFavorite={toggleFavorite}
-                    onRemove={removeContinueWatching}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {homeSections.nextUp && (
-            <Rail title="Next Up" url="/api/nextup" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
-          )}
-          {homeSections.recentlyAdded && (
-            <Rail title="Recently Added" url="/api/recently-added" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
-          )}
-          {homeSections.watchAgain && (
-            <Rail title="Watch Again" url="/api/watch-again" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
-          )}
-          {libraries.filter((lib) => showLibraryRow(lib.name)).map((lib) => (
-            <Rail key={lib.key} title={lib.name} url={`/api/library-rail?library=${encodeURIComponent(lib.name)}`} onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
-          ))}
-          {homeSections.shortPicks && (
-            <Rail title="Short Picks" url="/api/short-picks" onPlay={playItem} apiServer={API_SERVER} favoriteKeys={favoriteKeys} onToggleFavorite={toggleFavorite} />
-          )}
-
-          {homeSections.wildCard && (
-            <section style={gridSectionStyle}>
-              <h2 style={railTitleStyle}>Wild Card</h2>
-              <RecommendedFeed
-                onPlay={playItem}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-                apiServer={API_SERVER}
-              />
-            </section>
-          )}
+          {sectionOrder.map((token) => homeSectionEls[token]?.() || null)}
         </>
       )}
     </div>

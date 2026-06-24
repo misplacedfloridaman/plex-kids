@@ -44,9 +44,11 @@ const removeButtonStyle = {
 
 export default function MediaCard({ item, onPlay, apiServer = "", subtitle, isFavorite, onToggleFavorite, onRemove, horizontal }) {
   const [confirming, setConfirming] = useState(false);
-  // Show name for episodes; explicit subtitle if passed. Movies fall back to their year
-  // (they have no show name, and the line otherwise sits empty — too much negative space).
-  const displaySubtitle = subtitle ?? item.grandparentTitle ?? (item.type === "movie" ? item.year : null) ?? null;
+  // Show name for episodes; explicit subtitle if passed. Movies and shows fall back to their
+  // year (no show name to display, and the reserved line otherwise sits empty — too much
+  // negative space).
+  const displaySubtitle =
+    subtitle ?? item.grandparentTitle ?? ((item.type === "movie" || item.type === "show") ? item.year : null) ?? null;
   const progress = item.progress != null ? Math.min(Math.max(item.progress, 0), 1) : null;
 
   return (

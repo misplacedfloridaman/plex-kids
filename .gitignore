@@ -6,8 +6,9 @@ docker-compose.yml
 plex-kids-config/
 config/
 
-# Personal migration notes (kept local, not part of the public repo)
+# Personal migration / dev notes (kept local, not part of the public repo)
 MIGRATION.md
+DEV.md
 
 # Logs
 logs
