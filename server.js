@@ -945,18 +945,34 @@ function rewriteM3u8(text, baseUrl) {
   }).join("\n");
 }
 
+// Builds Plex transcode quality constraints from the client's requested cap. Returns "" for
+// no cap (Plex direct-streams the source at full bitrate — fine on the LAN, the buffering
+// culprit off-network). maxVideoBitrate is kbps; videoResolution is "WxH". With a cap set,
+// Plex remuxes when the source fits and transcodes down when it doesn't.
+function streamQualityParams(query) {
+  const kbps = Number.parseInt(query.maxVideoBitrate, 10);
+  if (!Number.isFinite(kbps) || kbps <= 0) return "";
+  const capped = Math.min(Math.max(kbps, 200), 60000);
+  let params = `&maxVideoBitrate=${capped}&videoQuality=100`;
+  if (/^\d{2,4}x\d{2,4}$/.test(String(query.videoResolution || ""))) {
+    params += `&videoResolution=${query.videoResolution}`;
+  }
+  return params;
+}
+
 app.get("/api/items/:key/stream.m3u8", async (req, res) => {
   const plexMetadataPath = `/library/metadata/${req.params.key}`;
   const clientId = String(req.query.clientId || "plex-kids-local").replace(
     /[^a-zA-Z0-9-_]/g, ""
   );
+  const qualityParams = streamQualityParams(req.query);
   // Use the active profile's token so Plex attributes the play session/history to the
   // right kid (falls back to admin token before a profile is selected).
   const streamUrl = plexUrl(
-    `/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(plexMetadataPath)}&mediaIndex=0&partIndex=0&protocol=hls&directPlay=0&directStream=1&subtitleSize=100&audioBoost=100&X-Plex-Product=PlexKids&X-Plex-Version=0.1&X-Plex-Client-Identifier=${encodeURIComponent(clientId)}&X-Plex-Platform=Web`,
+    `/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(plexMetadataPath)}&mediaIndex=0&partIndex=0&protocol=hls&directPlay=0&directStream=1&subtitleSize=100&audioBoost=100${qualityParams}&X-Plex-Product=PlexKids&X-Plex-Version=0.1&X-Plex-Client-Identifier=${encodeURIComponent(clientId)}&X-Plex-Platform=Web`,
     activeToken(req)
   );
-  console.log("Starting Plex stream", { key: req.params.key, clientId, user: req.session.user?.title || "admin" });
+  console.log("Starting Plex stream", { key: req.params.key, clientId, quality: qualityParams || "original", user: req.session.user?.title || "admin" });
   try {
     const m3u8Res = await fetch(streamUrl);
     if (!m3u8Res.ok) { res.status(502).end(); return; }
@@ -968,6 +984,18 @@ app.get("/api/items/:key/stream.m3u8", async (req, res) => {
     console.error("Stream fetch failed", err.message);
     res.status(502).end();
   }
+});
+
+// Lightweight download probe: the client times this to measure its real throughput to us.
+// The client↔server hop (Tailscale/WAN when off-network) is the streaming bottleneck — not
+// server↔Plex, which is always LAN — so this is what "Auto" quality keys off of. Returns N
+// zero bytes (never touches Plex).
+app.get("/api/netcheck", (req, res) => {
+  const bytes = Math.min(Math.max(Number.parseInt(req.query.bytes, 10) || 1_500_000, 1), 5_000_000);
+  res.setHeader("Content-Type", "application/octet-stream");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Length", String(bytes));
+  res.end(Buffer.alloc(bytes));
 });
 
 // Proxies HLS sub-playlists and segments from Plex through our HTTPS origin.

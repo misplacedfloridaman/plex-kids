@@ -8,7 +8,7 @@ A YouTube Kids-style web app that streams from a local Plex Media Server, packag
 
 The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kids/plex-kids/`. This directory is the Docker port of that app — tested and confirmed working.
 
-**Current version: v3.7.8** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
+**Current version: v3.8.0** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
 
 **v3.0.0 = Plex-native architecture:** Tailscale Serve (private delivery), Plex Home managed users for identity, and Plex timeline progress sync (Continue Watching = Plex On Deck; localStorage progress retired). Favorites remain local. Remaining v3 work (Phase D): OAuth login flow + open-source prep. See the plan file `nice-seems-to-be-agile-snowglobe.md`.
 
@@ -43,6 +43,7 @@ The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kid
 | v3.7.6 | New PWA app icon (orange Plex play-chevron + "Kids"): replaced `public/icon.png` (apple-touch-icon) and `public/icon.svg` (manifest); bumped apple-touch cache-buster to `?v=3`; manifest `purpose` → `any` (finished icon with its own background; avoids maskable cropping) + added a PNG manifest entry for Android. |
 | v3.7.7 | Recently Added condenses episodes/seasons to their show (one card per show, taps drill in). Home customization reworked: Wild Card is now a toggleable row (can disable the endless feed); the blanket "row per library" + separate Wild Card library list merged into one **Libraries** section with two per-library toggles (Own row / Wild Card). New layout fields `libraryRows` (null=all) + `sections.wildCard`; old `sections.libraries` migrated. |
 | v3.7.8 | Restore the year on movie cards: subtitle line falls back to `item.year` for movies (no show name to show, and the reserved line otherwise sits empty — too much negative space). Episodes still show the show name; explicit subtitles unchanged. |
+| v3.8.0 | Adaptive streaming quality (fixes off-network buffering): the stream request was `directStream=1` with no cap, so Plex shipped the full source bitrate every time — fine on LAN, the buffering culprit over Tailscale. Now a per-device "Streaming quality" setting (Auto/Original/High/Medium/Low, in Settings) sends `maxVideoBitrate`+`videoResolution` to Plex's transcoder. Auto measures real client↔server throughput via a `/api/netcheck` probe and picks a cap (full quality on fast links). See `src/quality.js`. |
 
 **Planned: offline downloads** — deferred. The library is MKV; Safari cannot play MKV natively. Blocked until a transcoding or format solution is found.
 

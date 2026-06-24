@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cosmeticFor } from "../profiles";
+import { QUALITY_OPTIONS, loadStreamQuality, saveStreamQuality } from "../quality";
 
 // Settings screen (reached from the profile picker), guarded by a PIN:
 //   - Daily access = enter the PIN (kids don't know it).
@@ -17,6 +18,8 @@ export default function Settings({ onClose }) {
   const [profilesAll, setProfilesAll] = useState([]);
   const [hidden, setHidden] = useState(new Set());
   const [lockHomeLayout, setLockHomeLayout] = useState(false);
+  // Per-device (localStorage), not server-stored — depends on the network the device is on.
+  const [streamQuality, setStreamQuality] = useState(loadStreamQuality);
   const [saving, setSaving] = useState(false);
 
   const aliveRef = useRef(true);
@@ -101,6 +104,7 @@ export default function Settings({ onClose }) {
   async function save() {
     setSaving(true);
     try {
+      saveStreamQuality(streamQuality); // device-local, applies immediately on this device
       await fetch("/api/settings", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hiddenProfiles: [...hidden], lockHomeLayout }),
@@ -234,6 +238,29 @@ export default function Settings({ onClose }) {
               {lockHomeLayout ? "Locked" : "Off"}
             </button>
           </div>
+        </section>
+
+        <section style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <p style={sectionTitle}>Streaming quality (this device)</p>
+          {QUALITY_OPTIONS.map((opt) => {
+            const selected = streamQuality === opt.id;
+            return (
+              <div key={opt.id} style={row}>
+                <span style={{ flex: 1, fontSize: "18px", fontWeight: "700" }}>
+                  {opt.label}
+                  <span style={{ display: "block", fontSize: "13px", fontWeight: "400", color: "rgba(255,255,255,0.45)" }}>
+                    {opt.hint}
+                  </span>
+                </span>
+                <button onClick={() => setStreamQuality(opt.id)} style={{ ...btn, padding: "8px 18px", fontSize: "14px", background: selected ? "#22c55e" : "rgba(255,255,255,0.12)", color: selected ? "#04210f" : "rgba(255,255,255,0.6)" }}>
+                  {selected ? "On" : "Off"}
+                </button>
+              </div>
+            );
+          })}
+          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", margin: 0 }}>
+            Lower quality streams use less bandwidth — helps when watching away from home Wi-Fi.
+          </p>
         </section>
       </div>
 

@@ -29,6 +29,7 @@ import {
   toggleFavoriteItem,
   getDeviceClientId,
 } from "./storage";
+import { resolveStreamParams } from "./quality";
 
 const API_SERVER = "";
 
@@ -248,9 +249,17 @@ function App() {
 
     if (isPlayablePlexItem(item)) {
       const clientId = getDeviceClientId(profileId);
+      // Per-device streaming quality → Plex bitrate cap. Empty/0 = original (no cap, full
+      // direct-stream — fine on the LAN, the buffering culprit off-network). "Auto" measures.
+      const quality = await resolveStreamParams();
+      const params = new URLSearchParams({ clientId });
+      if (quality.maxVideoBitrate > 0) {
+        params.set("maxVideoBitrate", String(quality.maxVideoBitrate));
+        if (quality.videoResolution) params.set("videoResolution", quality.videoResolution);
+      }
       // Resume from Plex's per-user viewOffset (ms) carried on the item.
       player.startPlayback({
-        url: `${API_SERVER}/api/items/${item.key}/stream.m3u8?clientId=${encodeURIComponent(clientId)}`,
+        url: `${API_SERVER}/api/items/${item.key}/stream.m3u8?${params.toString()}`,
         title: item.title,
         item,
         resumeTime: item.viewOffset ? item.viewOffset / 1000 : 0,
