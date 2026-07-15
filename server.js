@@ -6,6 +6,7 @@ import crypto from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Readable } from "stream";
+import { spawn } from "child_process";
 
 const PORT = process.env.PORT || 6767;
 // Optional library allowlist. Empty (the default now) means "let Plex decide" — each
@@ -788,11 +789,30 @@ app.post("/api/items/:key/progress", async (req, res) => {
   }
 });
 
-// Continue Watching = On Deck items that are partway through (viewOffset > 0).
+// Continue Watching = every in-progress item across all libraries (viewOffset > 0), most
+// recently played first. This is NOT Plex's On Deck (/library/onDeck): On Deck applies
+// next-episode logic and EXCLUDES whole library types — notably the YouTube/personal-media
+// library (agent com.plexapp.agents.youtube), which contributes zero items to On Deck. So a
+// kid could watch something to a saved resume point yet never see it resurface here. Querying
+// viewOffset directly is the literal resume list and includes those libraries. Plex clears
+// viewOffset when it marks an item watched, so finished items don't leak in.
 app.get("/api/continue", async (req, res) => {
   try {
-    const d = await fetchPlexJson("/library/onDeck", activeToken(req));
-    const items = (d.MediaContainer.Metadata || []).map(formatPlexItem).filter((i) => i.viewOffset > 0);
+    const d = await fetchPlexJson(
+      "/library/all?viewOffset%3E=1&sort=lastViewedAt:desc&X-Plex-Container-Size=30",
+      activeToken(req)
+    );
+    // One row per show (episodes of the same series collapse to the most recent — already
+    // first thanks to the sort); movies/videos dedupe by their own key.
+    const seen = new Set();
+    const items = [];
+    for (const raw of d.MediaContainer.Metadata || []) {
+      const showKey = String(raw.grandparentRatingKey || raw.ratingKey);
+      if (seen.has(showKey)) continue;
+      seen.add(showKey);
+      const item = formatPlexItem(raw);
+      if (item.viewOffset > 0) items.push(item);
+    }
     res.json({ items });
   } catch (err) {
     console.error("Failed to fetch continue watching", err.message);
@@ -1009,6 +1029,97 @@ app.get("/api/items/:key/stream.m3u8", async (req, res) => {
   } catch (err) {
     console.error("Stream fetch failed", err.message);
     res.status(502).end();
+  }
+});
+
+// Offline downloads: hand the client a single Safari-playable MP4 for on-device storage.
+// Plex's universal transcoder readily produces H.264/AAC (HW-accelerated) but always wraps
+// it in an MKV container (Safari can't demux MKV) — so we pipe Plex's stream through a cheap
+// ffmpeg container remux (`-c copy`, no re-encode) into a fragmented MP4. The heavy transcode
+// still runs in Plex; our ffmpeg only swaps the container. No Content-Length (streamed), so
+// the client estimates progress from duration×bitrate.
+app.get("/api/items/:key/download.mp4", async (req, res) => {
+  const key = String(req.params.key);
+  if (!/^\d+$/.test(key)) { res.status(400).end(); return; }
+  const clientId = String(req.query.clientId || "plex-kids-download").replace(
+    /[^a-zA-Z0-9-_]/g, ""
+  );
+  const sessionId = `pkdl-${key}-${Date.now()}`;
+  // Cap for on-device copies: default ~4 Mbps / 720p (Plex's ladder maps ~4 Mbps → 720p;
+  // 2 Mbps lands at ~404p, too soft on an iPad). Overridable via the same query params as the
+  // stream route. streamQualityParams clamps/validates. TODO(Phase 4): expose as a setting.
+  const qualityParams = streamQualityParams({
+    maxVideoBitrate: req.query.maxVideoBitrate || "4000",
+    videoResolution: req.query.videoResolution || "1280x720",
+  });
+  const plexMetadataPath = `/library/metadata/${key}`;
+  const plexStreamUrl = plexUrl(
+    `/video/:/transcode/universal/start.mp4?path=${encodeURIComponent(plexMetadataPath)}&mediaIndex=0&partIndex=0&protocol=http&directPlay=0&directStream=0&subtitleSize=100&audioBoost=100${qualityParams}&session=${sessionId}&X-Plex-Product=PlexKids&X-Plex-Version=0.1&X-Plex-Client-Identifier=${encodeURIComponent(clientId)}&X-Plex-Platform=Web`,
+    activeToken(req)
+  );
+
+  const controller = new AbortController();
+  let ffmpeg = null;
+  let done = false;
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    try { controller.abort(); } catch { /* ignore */ }
+    if (ffmpeg && !ffmpeg.killed) { try { ffmpeg.kill("SIGKILL"); } catch { /* ignore */ } }
+    // Tell Plex to drop the transcode session immediately (else it lingers until self-reaped
+    // ~30-60s later — wasteful when a kid cancels a download). Fire-and-forget.
+    fetch(plexUrl(`/video/:/transcode/universal/stop?session=${sessionId}`, activeToken(req)))
+      .catch(() => { /* best effort */ });
+  };
+  // Client navigated away / cancelled the download → tear down Plex fetch + ffmpeg.
+  res.on("close", cleanup);
+
+  console.log("Starting download", { key, clientId, quality: qualityParams || "default", user: req.session.user?.title || "admin" });
+  try {
+    const plexRes = await fetch(plexStreamUrl, { signal: controller.signal });
+    if (!plexRes.ok || !plexRes.body) {
+      console.error("Download: Plex returned", plexRes.status);
+      res.status(502).end();
+      cleanup();
+      return;
+    }
+
+    ffmpeg = spawn("ffmpeg", [
+      "-hide_banner", "-loglevel", "error",
+      "-i", "pipe:0",
+      "-c", "copy",
+      // +dash emits per-fragment sidx indexes while still streaming to a non-seekable pipe.
+      // Without them the downloaded fMP4 plays from the start but can't SEEK (resuming a
+      // half-watched episode from a local blob hangs). +dash makes the local file seekable.
+      "-movflags", "frag_keyframe+empty_moov+dash",
+      "-f", "mp4", "pipe:1",
+    ], { stdio: ["pipe", "pipe", "pipe"] });
+
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Cache-Control", "no-store");
+
+    ffmpeg.on("error", (err) => {
+      console.error("Download: ffmpeg spawn failed", err.message);
+      if (!res.headersSent) res.status(500);
+      res.end();
+      cleanup();
+    });
+    ffmpeg.stderr.on("data", (d) => console.error("ffmpeg(download):", d.toString().trim()));
+    ffmpeg.on("close", (code) => {
+      if (code && code !== 255) console.error("Download: ffmpeg exited", code);
+      cleanup();
+    });
+
+    ffmpeg.stdout.pipe(res);
+
+    const plexBody = Readable.fromWeb(plexRes.body);
+    plexBody.on("error", cleanup);
+    ffmpeg.stdin.on("error", () => { /* EPIPE on kill — expected */ });
+    plexBody.pipe(ffmpeg.stdin);
+  } catch (err) {
+    if (err.name !== "AbortError") console.error("Download fetch failed", err.message);
+    if (!res.headersSent) res.status(502).end();
+    cleanup();
   }
 });
 

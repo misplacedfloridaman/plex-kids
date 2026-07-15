@@ -37,3 +37,21 @@ export function getSavedProfileId() {
 export function saveProfileId(profileId) {
   localStorage.setItem("plexKidsActiveProfile", profileId);
 }
+
+// Cache the profiles list + last active profile so the app can pick a profile OFFLINE (the
+// picker normally needs /api/profiles). Only downloaded content is usable offline anyway.
+export function saveCachedProfiles(profiles) {
+  try { localStorage.setItem("plexKidsProfilesCache", JSON.stringify(profiles || [])); } catch { /* ignore */ }
+}
+
+export function loadCachedProfiles() {
+  try { return JSON.parse(localStorage.getItem("plexKidsProfilesCache") || "[]"); } catch { return []; }
+}
+
+export function saveCachedActiveProfile(profile) {
+  try { localStorage.setItem("plexKidsActiveProfileObj", JSON.stringify(profile || null)); } catch { /* ignore */ }
+}
+
+export function loadCachedActiveProfile() {
+  try { return JSON.parse(localStorage.getItem("plexKidsActiveProfileObj") || "null"); } catch { return null; }
+}

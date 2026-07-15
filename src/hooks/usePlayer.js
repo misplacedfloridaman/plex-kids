@@ -5,7 +5,9 @@ import { useEffect, useRef, useState } from "react";
 // onPlayNext      — called with the next item when autoplay countdown fires
 // onProgressSaved — called after reporting progress so App can refresh Continue Watching
 // Progress is reported to Plex (server-side, per active profile) — not localStorage.
-export function usePlayer({ mediaItems, onPlayNext, onProgressSaved }) {
+// onLocalProgress — called (key, seconds) during LOCAL (downloaded blob) playback so the app
+//                    can persist an offline resume position and sync it back to Plex later.
+export function usePlayer({ mediaItems, onPlayNext, onProgressSaved, onLocalProgress }) {
   const [playerUrl, setPlayerUrl] = useState(null);
   const [playerTitle, setPlayerTitle] = useState("");
   const [playerError, setPlayerError] = useState(null);
@@ -28,11 +30,14 @@ export function usePlayer({ mediaItems, onPlayNext, onProgressSaved }) {
   const autoplayTimeoutRef = useRef(null);
   const autoplayIntervalRef = useRef(null);
   const lastReportRef = useRef(0); // throttles progress reporting to Plex
+  const isLocalBlobRef = useRef(false); // current playback is a downloaded on-device blob
   // Always-current refs for callbacks used inside timers/effects
   const onPlayNextRef = useRef(onPlayNext);
   const onProgressSavedRef = useRef(onProgressSaved);
+  const onLocalProgressRef = useRef(onLocalProgress);
   onPlayNextRef.current = onPlayNext;
   onProgressSavedRef.current = onProgressSaved;
+  onLocalProgressRef.current = onLocalProgress;
 
   useEffect(() => {
     currentPlayingItemRef.current = currentPlayingItem;
@@ -91,10 +96,32 @@ export function usePlayer({ mediaItems, onPlayNext, onProgressSaved }) {
       video.removeEventListener("playing", handlePlaying);
     }
 
-    if (playerUrl.endsWith(".mp4")) {
+    // Local downloads play from a blob: object URL (created in App.playItem); progressive .mp4
+    // URLs use the same native-playback path. Blob URLs must be revoked on teardown.
+    const isLocalBlob = playerUrl.startsWith("blob:");
+    if (isLocalBlob || playerUrl.endsWith(".mp4")) {
+      // Seek THEN play, only once metadata is ready — a cold blob races if we play()
+      // immediately and seek separately (first-attempt hang on a half-watched download).
+      const resumeTime = pendingResumeTimeRef.current;
+      pendingResumeTimeRef.current = 0; // consumed here; keeps shared resumeIfPossible a no-op
+      const startLocal = () => {
+        if (resumeTime > 5 && video.duration && !Number.isNaN(video.duration) && resumeTime < video.duration - 10) {
+          try { video.currentTime = resumeTime; } catch { /* seek unsupported — start at 0 */ }
+        }
+        video.play().catch(() => {}); // may be blocked post-gesture; user can tap play
+      };
+      // Surface a fatal media error as the retry UI instead of hanging silently.
+      const onError = () => setPlayerError("Could not play this download");
+      video.addEventListener("loadedmetadata", startLocal, { once: true });
+      video.addEventListener("error", onError);
       video.src = playerUrl;
-      video.play().catch(() => {});
-      return removeListeners;
+      if (video.readyState >= 1) startLocal();
+      return () => {
+        removeListeners();
+        video.removeEventListener("loadedmetadata", startLocal);
+        video.removeEventListener("error", onError);
+        if (isLocalBlob) URL.revokeObjectURL(playerUrl);
+      };
     }
 
     if (Hls.isSupported()) {
@@ -157,13 +184,24 @@ export function usePlayer({ mediaItems, onPlayNext, onProgressSaved }) {
     const video = videoRef.current;
     const item = currentPlayingItemRef.current;
     if (!video || !item) return;
-    const duration = video.duration;
-    if (!duration || Number.isNaN(duration) || duration === Infinity) return;
+    // Downloaded items are fragmented MP4s (empty_moov) that carry NO total duration in their
+    // header, so video.duration reads Infinity/NaN — fall back to the item's known Plex
+    // duration (ms→s). Without this the guard below dropped every progress tick for downloads,
+    // so watching a downloaded item never reached Continue Watching.
+    let duration = video.duration;
+    if (!Number.isFinite(duration) || duration <= 0) {
+      duration = item.duration ? item.duration / 1000 : 0;
+    }
+    if (!duration) return;
     const now = Date.now();
     if (!force && now - lastReportRef.current < 10000) return;
     lastReportRef.current = now;
+    const seconds = Math.floor(video.currentTime || 0);
+    // Local playback: record the resume position on-device (survives offline) so it can be
+    // synced back to Plex when connectivity returns. Online, the fetch below still updates Plex.
+    if (isLocalBlobRef.current) onLocalProgressRef.current?.(item.key, seconds);
     const qs = new URLSearchParams({
-      time: String(Math.floor((video.currentTime || 0) * 1000)),
+      time: String(seconds * 1000),
       duration: String(Math.floor(duration * 1000)),
       state,
     });
@@ -217,6 +255,7 @@ export function usePlayer({ mediaItems, onPlayNext, onProgressSaved }) {
 
   function startPlayback({ url, title, item, resumeTime, index }) {
     pendingResumeTimeRef.current = resumeTime || 0;
+    isLocalBlobRef.current = typeof url === "string" && url.startsWith("blob:");
     setCurrentPlayingItem(item);
     setCurrentPlayingIndex(index ?? null);
     setShowPlayerControls(true);

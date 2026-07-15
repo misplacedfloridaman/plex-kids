@@ -27,8 +27,14 @@ import {
   loadFavorites,
   toggleFavoriteItem,
   getDeviceClientId,
+  saveCachedProfiles,
+  loadCachedProfiles,
+  saveCachedActiveProfile,
+  loadCachedActiveProfile,
 } from "./storage";
+import DownloadsScreen from "./components/DownloadsScreen";
 import { resolveStreamParams } from "./quality";
+import { downloadManager } from "./downloads/useDownloads";
 
 const API_SERVER = "";
 
@@ -51,6 +57,8 @@ function App() {
   const [continueWatchingItems, setContinueWatchingItems] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [showLibraryPicker, setShowLibraryPicker] = useState(false);
+  const [showDownloads, setShowDownloads] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -80,6 +88,9 @@ function App() {
     mediaItems,
     onPlayNext: (item) => playItem(item),
     onProgressSaved: () => loadContinue(),
+    // Persist resume position for downloaded (local blob) playback so offline viewing is
+    // recorded on-device and synced back to Plex when connectivity returns.
+    onLocalProgress: (key, seconds) => downloadManager.recordLocalProgress(key, seconds),
   });
 
   // Reload profile-specific data whenever the active profile changes.
@@ -89,6 +100,11 @@ function App() {
     loadContinue(); // eslint-disable-line react-hooks/set-state-in-effect
     loadHomeLayout();
     setFavorites(loadFavorites(profileId));
+    // Scope downloads to this managed user (loads which items are already downloaded).
+    downloadManager.setProfile(profileId);
+    // Flush any resume positions recorded during offline playback back to Plex, then refresh
+    // Continue Watching so synced items appear.
+    if (navigator.onLine) downloadManager.syncPending().then((synced) => { if (synced) loadContinue(); });
   }, [profileId]);
 
   // Visible profiles for the picker (Settings can hide some, so this is refetched after save).
@@ -97,19 +113,39 @@ function App() {
       const res = await fetch(`${API_SERVER}/api/profiles`);
       const data = await res.json();
       setProfiles(data.profiles || []);
+      saveCachedProfiles(data.profiles || []); // for offline picker
     } catch {
-      setProfiles([]);
+      setProfiles(loadCachedProfiles());
     }
   }
 
+  // Track connectivity so we can fall back to a fully-offline Downloads-only mode (the car).
+  useEffect(() => {
+    const on = () => {
+      setIsOffline(false);
+      // Back online (e.g. home from the car) → push offline resume positions to Plex.
+      downloadManager.syncPending().then((synced) => { if (synced) loadContinue(); });
+    };
+    const off = () => setIsOffline(true);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+
   // On load: restore this device's session (skip the picker if a profile is already
-  // chosen) and fetch the Plex Home users that back the picker.
+  // chosen) and fetch the Plex Home users that back the picker. Offline (or server down),
+  // fall back to cached profiles + last profile so downloaded content is still reachable.
   useEffect(() => {
     (async () => {
       try {
         const sessionData = await (await fetch(`${API_SERVER}/api/session`)).json();
         if (sessionData.user) setActiveProfile(sessionData.user);
         await loadProfiles();
+      } catch {
+        setIsOffline(true);
+        setProfiles(loadCachedProfiles());
+        const last = loadCachedActiveProfile();
+        if (last) setActiveProfile(last); // enter offline mode directly on the last kid
       } finally {
         setProfilesLoading(false);
       }
@@ -119,6 +155,7 @@ function App() {
   useEffect(() => {
     if (!profileId) return; // libraries are per-profile now (Plex scopes them by user)
     async function loadLibraries() {
+      if (isOffline) { setLoading(false); return; } // offline → Downloads-only mode, no library fetch
       try {
         const response = await fetch(`${API_SERVER}/api/libraries`);
         if (!response.ok) throw new Error(`Plex responded with ${response.status}`);
@@ -155,7 +192,7 @@ function App() {
       }
     }
     loadLibraries();
-  }, [profileId]);
+  }, [profileId, isOffline]);
 
   useEffect(() => {
     const query = searchQuery.trim();
@@ -183,10 +220,18 @@ function App() {
   async function selectProfile(profile) {
     setSwitching(true);
     try {
+      // Offline: no server switch (blob playback needs no Plex token). Use the cached profile.
+      if (!navigator.onLine) {
+        setActiveProfile(profile);
+        saveCachedActiveProfile(profile);
+        setIsOffline(true);
+        return;
+      }
       const res = await fetch(`${API_SERVER}/api/session/switch/${profile.uuid}`, { method: "POST" });
       if (!res.ok) throw new Error("switch failed");
       const data = await res.json();
       setActiveProfile(data.user);
+      saveCachedActiveProfile(data.user); // so this kid is reachable offline next time
     } catch {
       setError("Couldn't switch profile — try again.");
     } finally {
@@ -247,6 +292,21 @@ function App() {
     const itemIndex = itemList.findIndex((m) => m.key === item.key);
 
     if (isPlayablePlexItem(item)) {
+      // Prefer an on-device download when one exists — plays offline, scrubs instantly, no
+      // transcode. A blob: URL signals local playback to the player (see usePlayer).
+      const local = await downloadManager.getRecord(item.key);
+      if (local?.blob) {
+        player.startPlayback({
+          url: URL.createObjectURL(local.blob),
+          title: item.title,
+          item,
+          resumeTime: local.localViewOffset || (item.viewOffset ? item.viewOffset / 1000 : 0),
+          index: itemIndex >= 0 ? itemIndex : null,
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       const clientId = getDeviceClientId(profileId);
       // Per-device streaming quality → Plex bitrate cap. Empty/0 = original (no cap, full
       // direct-stream — fine on the LAN, the buffering culprit off-network). "Auto" measures.
@@ -488,6 +548,36 @@ function App() {
     overflow: "hidden",
   };
 
+  // Downloads view: reachable from the ⬇ nav button, and the ONLY view when offline (the car).
+  if (showDownloads || isOffline) {
+    return (
+      <div style={pageStyle}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+          <PlexKidsLogo />
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {isOffline && (
+              <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", fontWeight: 700 }}>✈️ Offline</span>
+            )}
+            <button style={profileAvatarStyle} onClick={switchProfile} title={`Switch profile (${activeProfile.title})`}>
+              {activeProfile.thumb
+                ? <img src={activeProfile.thumb} alt={activeProfile.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : activeCosmetic.emoji}
+            </button>
+            {!isOffline && (
+              <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowDownloads(false)} title="Back to home" aria-label="Back to home">
+                🏠
+              </button>
+            )}
+          </div>
+        </div>
+
+        {player.playerUrl && <Player {...playerProps} />}
+
+        <DownloadsScreen onPlay={playItem} />
+      </div>
+    );
+  }
+
   if (selectedLibrary) {
     return (
       <div style={pageStyle}>
@@ -608,6 +698,9 @@ function App() {
           </button>
           <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowLibraryPicker(true)} title="Libraries" aria-label="Libraries">
             📚
+          </button>
+          <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowDownloads(true)} title="Downloads" aria-label="Downloads">
+            ⬇
           </button>
         </div>
       </div>

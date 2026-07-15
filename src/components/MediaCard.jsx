@@ -1,5 +1,70 @@
 import { useState } from "react";
 import { videoCardStyle, itemInfoStyle, itemTitleStyle, itemMetaStyle, railCardStyle } from "../styles";
+import { useDownloadItem, downloadManager } from "../downloads/useDownloads";
+
+// Circular control overlaid on the bottom-right of the thumbnail (never over the title).
+// Rendered as a role=button span so it can live inside the card's <button> without nesting.
+const downloadBadgeBase = {
+  position: "absolute",
+  right: "8px",
+  bottom: "8px",
+  background: "rgba(0,0,0,0.65)",
+  borderRadius: "50%",
+  width: "38px",
+  height: "38px",
+  fontSize: "17px",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 3,
+  color: "white",
+  lineHeight: 1,
+  userSelect: "none",
+};
+
+// Small download control shown on downloadable cards (movies/episodes = single, seasons = bulk).
+function DownloadControl({ item }) {
+  const isSeason = item.type === "season" || item.type === "show";
+  const canSingle = !!item.mediaKey || ["movie", "episode", "clip", "track"].includes(item.type);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const dl = useDownloadItem(item.key);
+  if (!isSeason && !canSingle) return null;
+
+  const badge = (extra, onClick, label, content) => (
+    <span
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      style={{ ...downloadBadgeBase, ...extra }}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+    >
+      {content}
+    </span>
+  );
+
+  if (dl.status === "downloading") {
+    return badge({ fontSize: "11px", fontWeight: 800 }, () => downloadManager.cancel(item.key), "Cancel download", `${Math.round((dl.progress || 0) * 100)}%`);
+  }
+  if (dl.status === "queued") {
+    return badge({}, () => downloadManager.cancel(item.key), "Queued — cancel", "⏳");
+  }
+  if (dl.status === "error") {
+    return badge({ color: "#ff6b6b" }, () => downloadManager.enqueue(item), "Download failed — retry", "↻");
+  }
+  if (dl.status === "complete") {
+    if (confirmDelete) {
+      return badge(
+        { background: "#ef4444", width: "auto", padding: "0 12px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 },
+        () => { setConfirmDelete(false); downloadManager.remove(item.key); },
+        "Confirm delete download",
+        "Delete?",
+      );
+    }
+    return badge({ color: "#4ade80" }, () => setConfirmDelete(true), "Downloaded — tap to delete", "✓");
+  }
+  return badge({}, () => downloadManager.enqueue(item), isSeason ? "Download season" : "Download", isSeason ? "⬇⬇" : "⬇");
+}
 
 const cardWrapStyle = {
   position: "relative",
@@ -77,6 +142,7 @@ export default function MediaCard({ item, onPlay, apiServer = "", subtitle, isFa
                 </div>
               </div>
             )}
+            <DownloadControl item={item} />
           </div>
         )}
         <div style={itemInfoStyle}>

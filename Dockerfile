@@ -9,6 +9,9 @@ RUN npm run build
 # Stage 2 — run the Express server
 FROM node:20-alpine
 WORKDIR /app
+# ffmpeg: used by the offline-download route to remux Plex's H.264/AAC MKV stream into a
+# Safari-playable fragmented MP4 (container copy only, no re-encode).
+RUN apk add --no-cache ffmpeg
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY server.js .
