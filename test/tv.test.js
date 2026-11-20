@@ -82,15 +82,13 @@ test("playOnTv wakes a sleeping TV before playing", async () => {
   assert.deepEqual(ha.services(), ["turn_on", "play_media"]);
 });
 
-test("playOnTv gives up when the TV never wakes", async () => {
+test("playOnTv still sends the link when HA keeps reporting the TV off", async () => {
+  // HA's Apple TV power state can be stale (TV awake on the screensaver, HA says "off"); the
+  // deep link itself still works, so waking is best-effort and never blocks playback.
   const ha = fakeHa({ states: ["off"] });
-  await assert.rejects(client(ha).playOnTv({ ratingKey: "1" }), (err) => {
-    assert.ok(err instanceof TvError);
-    assert.equal(err.userMessage, "TV didn't wake up");
-    assert.equal(err.status, 504);
-    return true;
-  });
-  assert.ok(!ha.services().includes("play_media"));
+  const { url } = await client(ha).playOnTv({ ratingKey: "1" });
+  assert.equal(url, "rivulet://play?ratingKey=1&offset=0");
+  assert.deepEqual(ha.services(), ["turn_on", "play_media"]);
 });
 
 test("playOnTv retries play_media once after a network error", async () => {

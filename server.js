@@ -770,7 +770,11 @@ app.get("/api/items/:key/details", async (req, res) => {
 // ---------------------------------------------------------------------------
 
 function sendTvError(res, err, fallback) {
-  if (err instanceof TvError) { res.status(err.status).json({ error: err.userMessage }); return; }
+  if (err instanceof TvError) {
+    console.error(`[tv] ${fallback}: ${err.userMessage}`); // userMessage never contains the token
+    res.status(err.status).json({ error: err.userMessage });
+    return;
+  }
   console.error(`[tv] ${fallback}:`, err.message);
   res.status(502).json({ error: fallback });
 }

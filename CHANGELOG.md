@@ -3,6 +3,17 @@
 All notable changes to Plex Kids are recorded here, newest first.
 Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git tag history.
 
+## [3.12.5] — 2026-11-19 — Play on TV works when the TV only looks asleep
+
+### Fixed
+- **Play on TV no longer fails with "TV didn't wake up" when the TV is actually awake.**
+  Home Assistant's Apple TV power state can be stale — it reported "off" while the Apple TV
+  sat on its screensaver — and Plex Kids refused to send the item until HA said the TV was
+  on. Waking is now best-effort: Plex Kids asks HA to turn the TV on, waits up to 5 s for it
+  to report awake, then sends the deep link either way (the link itself still launches
+  playback). Errors appear only if the send fails.
+- Play on TV failures are now written to the container log (`[tv] …`; never the token).
+
 ## [3.12.4] — 2026-11-19 — White nav buttons
 
 ### Changed

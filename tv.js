@@ -44,7 +44,7 @@ export function createTvClient(
   {
     fetch = globalThis.fetch,
     sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
-    wakeTimeoutMs = 10000,
+    wakeTimeoutMs = 5000,
     pollMs = 1000,
     requestTimeoutMs = 15000, // a hung HA must not leave the phone on "Sending…"
   } = {}
@@ -78,6 +78,9 @@ export function createTvClient(
     return { state: s.state, title: s.attributes?.media_title ?? null, app: s.attributes?.app_name ?? null };
   }
 
+  // Best-effort: HA's Apple TV power state can be stale ("off" while the TV sits on its
+  // screensaver), and the deep link wakes/launches on its own anyway — so wait briefly for
+  // the TV to report awake, then send the link regardless.
   async function wake() {
     if (!ASLEEP_STATES.has((await getState()).state)) return;
     await callService("turn_on");
@@ -85,7 +88,6 @@ export function createTvClient(
       await sleep(pollMs);
       if (!ASLEEP_STATES.has((await getState()).state)) return;
     }
-    throw new TvError("TV didn't wake up", 504);
   }
 
   async function playOnTv({ ratingKey, offsetMs }) {
