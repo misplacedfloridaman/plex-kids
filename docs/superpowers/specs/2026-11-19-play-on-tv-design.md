@@ -109,8 +109,8 @@ deep link works end to end from a sleeping Apple TV). Plex Kids just becomes ano
 - No new runtime dependencies (native `fetch` is enough for HA).
 - Version bump per repo convention (`PlexKidsLogo.jsx`, CLAUDE.md table, CHANGELOG.md) —
   next minor: v3.12.0.
-- The owner's deployment builds from source via `/opt/stack/docker-compose.yaml`
-  (`build: .../plex-kids-docker`); deploying = rebuild + restart that one container.
+- The owner's deployment builds this repo from source via their own compose file;
+  deploying = rebuild + recreate that one container.
 
 ## Known trade-off (accepted)
 
