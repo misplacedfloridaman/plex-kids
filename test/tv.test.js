@@ -108,15 +108,22 @@ test("playOnTv reports an unreachable Home Assistant after two network errors", 
   });
 });
 
-test("a Home Assistant that never answers times out instead of hanging", async () => {
+test("a Home Assistant that never answers times out instead of hanging", { timeout: 2000 }, async () => {
   // Never resolves on its own; only an abort (the client's timeout) ends it.
   const hangingFetch = (url, opts = {}) =>
     new Promise((_, reject) => opts.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
   const tvClient = createTvClient(loadTvConfig(ENV), { fetch: hangingFetch, sleep: noSleep, requestTimeoutMs: 20 });
-  await assert.rejects(tvClient.getState(), (err) => {
-    assert.equal(err.userMessage, "Couldn't reach Home Assistant");
-    return true;
-  });
+  // AbortSignal.timeout's timer is unref'd; in the real server the listening socket keeps the
+  // event loop alive, so do the same here or node:test cancels the test before it fires.
+  const keepAlive = setInterval(() => {}, 1000);
+  try {
+    await assert.rejects(tvClient.getState(), (err) => {
+      assert.equal(err.userMessage, "Couldn't reach Home Assistant");
+      return true;
+    });
+  } finally {
+    clearInterval(keepAlive);
+  }
 });
 
 test("a rejected token is reported without leaking it", async () => {
