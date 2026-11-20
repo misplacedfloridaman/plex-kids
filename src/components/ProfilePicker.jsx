@@ -11,6 +11,8 @@ export default function ProfilePicker({ profiles, onSelect, loading, disabled, o
       alignItems: "center",
       justifyContent: "center",
       padding: "40px",
+      // Keep the profiles clear of the ⚙️ pinned at the bottom (profiles stack on a phone).
+      paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)",
       fontFamily: "sans-serif",
       boxSizing: "border-box",
       position: "relative",

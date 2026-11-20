@@ -598,17 +598,17 @@ function App() {
   if (showDownloads || isOffline) {
     return (
       <div style={pageStyle}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+        <div className="pk-header">
           <PlexKidsLogo inline />
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button className="pk-header-profile" style={profileAvatarStyle} onClick={switchProfile} title={`Switch profile (${activeProfile.title})`}>
+            {activeProfile.thumb
+              ? <img src={activeProfile.thumb} alt={activeProfile.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : activeCosmetic.emoji}
+          </button>
+          <div className="pk-header-actions">
             {isOffline && (
               <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", fontWeight: 700 }}>✈️ Offline</span>
             )}
-            <button style={profileAvatarStyle} onClick={switchProfile} title={`Switch profile (${activeProfile.title})`}>
-              {activeProfile.thumb
-                ? <img src={activeProfile.thumb} alt={activeProfile.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : activeCosmetic.emoji}
-            </button>
             {!isOffline && (
               <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowDownloads(false)} title="Back to home" aria-label="Back to home">
                 🏠

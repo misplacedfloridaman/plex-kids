@@ -11,7 +11,7 @@ export default function PlexKidsLogo({ inline = false }) {
         style={{ height: "75px", width: "auto", display: "block" }}
       />
       <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px", fontWeight: "600", letterSpacing: "0.06em", paddingBottom: inline ? "12px" : 0 }}>
-        v3.12.2
+        v3.12.3
       </span>
     </div>
   );

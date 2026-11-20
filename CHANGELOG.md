@@ -3,6 +3,14 @@
 All notable changes to Plex Kids are recorded here, newest first.
 Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git tag history.
 
+## [3.12.3] — 2026-11-19 — Downloads header + profile picker on phones
+
+### Fixed
+- **Downloads page header fits phones in portrait:** it uses the home page's header layout, so
+  the 🏠 button drops below the logo instead of running off the right edge.
+- **Profile picker ⚙️ no longer overlaps a profile** when profiles stack vertically on a phone:
+  the page keeps room at the bottom for the pinned settings button.
+
 ## [3.12.2] — 2026-11-19 — Header clears the status bar
 
 ### Fixed
