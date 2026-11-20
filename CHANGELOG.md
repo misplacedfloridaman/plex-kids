@@ -3,6 +3,20 @@
 All notable changes to Plex Kids are recorded here, newest first.
 Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git tag history.
 
+## [3.12.0] — 2026-11-19 — Play on TV
+
+### Added
+- **Play on TV (optional).** Send a tapped movie or episode to a TV instead of playing it on the
+  device — e.g. put on the exact episode a kid asks for from a parent's phone. Plex Kids asks
+  Home Assistant to wake the TV and open a deep link (default: Rivulet on Apple TV,
+  `rivulet://play?ratingKey=…&offset=…`), starting at the browsing profile's resume point.
+  Off unless `TV_HA_URL`, `TV_HA_TOKEN` and `TV_HA_ENTITY` are set; keep them in a separate
+  `tv.env` (see `tv.env.example`), not in the compose file. The token stays server-side.
+- **Per-device opt-in.** Settings → Play on TV → Allowed (PIN-guarded), so kids' devices can't
+  send to the TV. Allowed devices get a 📺/📱 header toggle and a now-playing bar with
+  play/pause.
+- `npm test` (built-in `node:test`) with unit tests for the Home Assistant client.
+
 ## [3.11.0] — 2026-07-15 — Continue Watching fixes + offline progress sync-back
 
 ### Fixed
