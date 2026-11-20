@@ -8,7 +8,7 @@ A YouTube Kids-style web app that streams from a local Plex Media Server, packag
 
 The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kids/plex-kids/`. This directory is the Docker port of that app — tested and confirmed working.
 
-**Current version: v3.12.0** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
+**Current version: v3.12.1** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
 
 **v3.0.0 = Plex-native architecture:** Tailscale Serve (private delivery), Plex Home managed users for identity, and Plex timeline progress sync (Continue Watching = Plex On Deck; localStorage progress retired). Favorites remain local. Remaining v3 work (Phase D): OAuth login flow + open-source prep. See the plan file `nice-seems-to-be-agile-snowglobe.md`.
 
@@ -47,6 +47,7 @@ The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kid
 | v3.9.0 | Three tweaks: (1) Libraries nav button is now just the 📚 emoji (round icon, matches the search/customize buttons) — text removed. (2) **Reorderable home rows**: Customize Home has ↑/↓ controls; order persists per profile via new `sectionOrder` layout field (rendered order-driven in App.jsx, normalized + back-compat on the server; "libraries" = the per-library row block, toggled per-library as before). (3) Year subtitle fallback extended from movies to **shows** too (MediaCard: any movie/show with no show-name subtitle shows its year). |
 | v3.9.1 | Pin **Wild Card to the bottom** of the home rows: it's an endless feed, so any row ordered below it would be unreachable. Enforced in three places — server `normalizeSectionOrder` forces `wildCard` last, App.jsx render forces it last, and Customize Home shows it as a fixed (🔒, toggleable but not movable) row below the reorderable list. |
 | v3.12.0 | **Play on TV** (optional; off unless `TV_HA_*` env vars are set — keep them in a separate `tv.env`, see `tv.env.example`): a parent-allowed device (Settings → Play on TV, per-device) sends tapped movies/episodes to a TV via Home Assistant `media_player.play_media` + deep link (default Rivulet `rivulet://play?ratingKey=…&offset=…`, offset = browsing profile's resume point), waking it first. 📺/📱 header toggle; now-playing bar with play/pause. Server logic in `tv.js`, unit-tested via `npm test` (`node:test`). (v3.10–3.11: see CHANGELOG.md.) |
+| v3.12.1 | Home header fits phones in portrait: logo + profile on top, nav buttons wrap to a full-width row below 700 px (`.pk-header*` classes in `index.css`; landscape/iPad unchanged). Was overflowing sideways at ~390 px. |
 
 **Planned: offline downloads** — deferred. The library is MKV; Safari cannot play MKV natively. Blocked until a transcoding or format solution is found.
 

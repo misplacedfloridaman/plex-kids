@@ -730,14 +730,14 @@ function App() {
 
   return (
     <div style={pageStyle}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+      <div className="pk-header">
         <PlexKidsLogo />
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button style={profileAvatarStyle} onClick={switchProfile} title={`Switch profile (${activeProfile.title})`}>
-            {activeProfile.thumb
-              ? <img src={activeProfile.thumb} alt={activeProfile.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : activeCosmetic.emoji}
-          </button>
+        <button className="pk-header-profile" style={profileAvatarStyle} onClick={switchProfile} title={`Switch profile (${activeProfile.title})`}>
+          {activeProfile.thumb
+            ? <img src={activeProfile.thumb} alt={activeProfile.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : activeCosmetic.emoji}
+        </button>
+        <div className="pk-header-actions">
           {tv.enabled && tvAllowed && (
             <button
               style={{ ...profileAvatarStyle, backgroundColor: onTv ? "#22c55e" : "rgba(255,255,255,0.15)", boxShadow: "none" }}

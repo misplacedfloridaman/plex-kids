@@ -125,3 +125,27 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Home header: logo + profile on top; the round nav buttons sit beside them when there's
+   room (landscape, iPad) and drop to their own full-width row on a phone in portrait. */
+.pk-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.pk-header-profile {
+  margin-left: auto;
+}
+.pk-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .pk-header-actions {
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
+}

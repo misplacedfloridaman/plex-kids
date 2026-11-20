@@ -3,6 +3,15 @@
 All notable changes to Plex Kids are recorded here, newest first.
 Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git tag history.
 
+## [3.12.1] — 2026-11-19 — Home header fits phones in portrait
+
+### Fixed
+- **Home header no longer runs off the screen on a phone held upright.** The logo and the row
+  of round nav buttons (made one wider by 3.12.0's 📺 toggle) didn't fit at phone portrait
+  widths, so the page scrolled sideways. The logo and profile picture now stay on top and the
+  nav buttons drop to their own full-width row below 700 px; landscape and iPad are unchanged.
+  Checked at 375, 390, 820 and 844 px wide: no horizontal overflow.
+
 ## [3.12.0] — 2026-11-19 — Play on TV
 
 ### Added
