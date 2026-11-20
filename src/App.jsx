@@ -599,7 +599,7 @@ function App() {
     return (
       <div style={pageStyle}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
-          <PlexKidsLogo />
+          <PlexKidsLogo inline />
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {isOffline && (
               <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", fontWeight: 700 }}>✈️ Offline</span>
@@ -731,7 +731,7 @@ function App() {
   return (
     <div style={pageStyle}>
       <div className="pk-header">
-        <PlexKidsLogo />
+        <PlexKidsLogo inline />
         <button className="pk-header-profile" style={profileAvatarStyle} onClick={switchProfile} title={`Switch profile (${activeProfile.title})`}>
           {activeProfile.thumb
             ? <img src={activeProfile.thumb} alt={activeProfile.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />

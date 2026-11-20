@@ -6,6 +6,9 @@ export const pageStyle = {
   background: "#000",
   // Fluid padding: tight on phones, full breathing room on iPad+.
   padding: "clamp(12px, 4vw, 28px)",
+  // Home-screen web app draws under the status bar (black-translucent), so clear the clock /
+  // Dynamic Island on top.
+  paddingTop: "calc(env(safe-area-inset-top, 0px) + clamp(12px, 4vw, 28px))",
   paddingLeft: "max(clamp(12px, 4vw, 28px), env(safe-area-inset-left))",
   paddingRight: "max(clamp(12px, 4vw, 28px), env(safe-area-inset-right))",
   fontFamily: "sans-serif",

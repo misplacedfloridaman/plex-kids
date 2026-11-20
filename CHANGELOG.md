@@ -3,6 +3,16 @@
 All notable changes to Plex Kids are recorded here, newest first.
 Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git tag history.
 
+## [3.12.2] — 2026-11-19 — Header clears the status bar
+
+### Fixed
+- **Pages no longer start under the clock / Dynamic Island** when Plex Kids runs from the
+  home screen (it draws under a translucent status bar): page padding now includes the
+  device's top safe-area inset.
+- **Tighter header on phones:** the version number sits to the right of the logo in page
+  headers instead of under it, so the nav-button row sits closer to the logo. The profile
+  picker keeps the version underneath.
+
 ## [3.12.1] — 2026-11-19 — Home header fits phones in portrait
 
 ### Fixed
