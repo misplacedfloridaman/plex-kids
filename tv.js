@@ -41,16 +41,22 @@ export function buildTvUrl(template, { ratingKey, offsetMs }) {
 
 export function createTvClient(
   config,
-  { fetch = globalThis.fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), wakeTimeoutMs = 10000, pollMs = 1000 } = {}
+  {
+    fetch = globalThis.fetch,
+    sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+    wakeTimeoutMs = 10000,
+    pollMs = 1000,
+    requestTimeoutMs = 15000, // a hung HA must not leave the phone on "Sending…"
+  } = {}
 ) {
   const headers = { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json" };
 
-  // One HA request. Network errors are retried once; HTTP errors are not.
+  // One HA request. Network errors and timeouts are retried once; HTTP errors are not.
   async function ha(path, options = {}) {
     let res;
     for (let attempt = 0; ; attempt++) {
       try {
-        res = await fetch(`${config.haUrl}${path}`, { ...options, headers });
+        res = await fetch(`${config.haUrl}${path}`, { ...options, headers, signal: AbortSignal.timeout(requestTimeoutMs) });
         break;
       } catch {
         if (attempt >= 1) throw new TvError("Couldn't reach Home Assistant", 502);

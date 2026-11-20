@@ -108,6 +108,17 @@ test("playOnTv reports an unreachable Home Assistant after two network errors", 
   });
 });
 
+test("a Home Assistant that never answers times out instead of hanging", async () => {
+  // Never resolves on its own; only an abort (the client's timeout) ends it.
+  const hangingFetch = (url, opts = {}) =>
+    new Promise((_, reject) => opts.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+  const tvClient = createTvClient(loadTvConfig(ENV), { fetch: hangingFetch, sleep: noSleep, requestTimeoutMs: 20 });
+  await assert.rejects(tvClient.getState(), (err) => {
+    assert.equal(err.userMessage, "Couldn't reach Home Assistant");
+    return true;
+  });
+});
+
 test("a rejected token is reported without leaking it", async () => {
   const ha = fakeHa({ fail: { play_media: { count: 1, status: 401 } } });
   await assert.rejects(client(ha).playOnTv({ ratingKey: "1" }), (err) => {
