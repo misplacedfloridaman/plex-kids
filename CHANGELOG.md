@@ -3,6 +3,16 @@
 All notable changes to Plex Kids are recorded here, newest first.
 Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git tag history.
 
+## [Unreleased]
+
+### Known issues
+- **The Play on TV now-playing bar can disappear while something is playing.** The bar shows
+  only when Home Assistant reports the TV as playing or paused, and HA's Apple TV integration
+  can stop receiving status updates (it keeps reporting "off" while commands still work).
+  Playback itself is unaffected since 3.12.5. Workaround: reload the Apple TV integration in
+  Home Assistant (Settings → Devices & services → Apple TV → ⋮ → Reload). Possible follow-up:
+  keep the bar visible for the last item sent even when HA's status is stale.
+
 ## [3.12.5] — 2026-11-19 — Play on TV works when the TV only looks asleep
 
 ### Fixed
