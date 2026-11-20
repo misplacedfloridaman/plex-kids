@@ -28,6 +28,10 @@ services:
       # own library access decide what they see (recommended). Set it only to further
       # restrict beyond Plex, e.g.:
       # - ALLOWED_LIBRARIES=Family Movies,Kids Shows
+    # OPTIONAL "Play on TV" (send what you tap to a TV via Home Assistant). Its settings,
+    # including the Home Assistant token, go in a separate file — not in this compose file.
+    # Copy tv.env.example to tv.env, fill it in, `chmod 600 tv.env`, then uncomment:
+    # env_file: ./tv.env
     volumes:
       # Persists the admin token, settings PIN, hidden profiles, and per-profile home
       # layouts across rebuilds. Keep this — losing it means re-signing-in to bootstrap.

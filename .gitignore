@@ -1,5 +1,6 @@
 # Secrets — never commit
 .env
+tv.env
 docker-compose.yml
 
 # Runtime config volume — holds the persisted admin token + PIN + settings

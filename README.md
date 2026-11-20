@@ -63,6 +63,27 @@ tailscale serve --bg http://localhost:6767
 Kids' devices just need the Tailscale app and the resulting `https://<host>.<tailnet>.ts.net`
 URL. (Tailscale **Funnel** would make it public — not recommended for a kids' app.)
 
+## Play on TV (optional)
+
+Send what you tap to a TV instead of playing it on the device — handy for putting on a
+specific episode from your phone without the TV remote. Plex Kids asks
+[Home Assistant](https://www.home-assistant.io) to wake the TV and open a deep link; by
+default that's [Rivulet](https://github.com/l984-451/Rivulet), a tvOS Plex client, which plays
+the item from the browsing profile's resume point.
+
+You need Home Assistant with the TV as a `media_player` (e.g. the Apple TV integration, with
+its Companion protocol paired) and an app on the TV that opens deep links.
+
+1. Copy `tv.env.example` to `tv.env`, fill in `TV_HA_URL`, `TV_HA_TOKEN` and `TV_HA_ENTITY`
+   (plus `TV_NAME` if you like), and `chmod 600 tv.env`. Keep the token out of the compose file.
+2. Uncomment `env_file: ./tv.env` in your compose file and restart the container.
+3. On a parent's device: Settings → **Play on TV** → Allowed. A 📺 pill appears on the home
+   screen; tap it to switch that device between the TV and itself. Leave kids' devices Off.
+
+Rivulet tip: set Rivulet's Settings → Profile Picker to **Off**, or links wait at "Who's
+watching?". Rivulet plays as its own active profile, so progress during TV playback is
+recorded to that Plex user.
+
 ## Auto-recovery with autoheal (optional)
 
 The compose file gives `plex-kids` a **healthcheck** (it pings `/healthz` every 30s). On its own,

@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { Readable } from "stream";
 import { spawn } from "child_process";
+import { loadTvConfig, createTvClient, isValidRatingKey, TvError } from "./tv.js";
 
 const PORT = process.env.PORT || 6767;
 // Optional library allowlist. Empty (the default now) means "let Plex decide" — each
@@ -35,6 +36,10 @@ const SESSION_SECRET_ENV = process.env.SESSION_SECRET;
 // App settings (e.g. profiles hidden from the picker). Persisted to a mounted volume
 // so it survives container rebuilds.
 const SETTINGS_PATH = process.env.SETTINGS_PATH || "/config/settings.json";
+// Optional "Play on TV" via Home Assistant (see tv.js). Off unless TV_HA_URL, TV_HA_TOKEN
+// and TV_HA_ENTITY are all set; `tv` is null when off.
+const tvConfig = loadTvConfig(process.env);
+const tv = tvConfig.enabled ? createTvClient(tvConfig) : null;
 
 // Global admin settings:
 //   hiddenProfiles — profiles hidden from the picker
@@ -394,7 +399,7 @@ function shuffle(arr) {
 // ---------------------------------------------------------------------------
 
 app.get("/api/config", (req, res) => {
-  res.json({ allowedLibraries: ALLOWED_LIBRARIES });
+  res.json({ allowedLibraries: ALLOWED_LIBRARIES, tv: { enabled: !!tv, name: tvConfig.name } });
 });
 
 // Liveness probe for the Docker healthcheck — cheap, no Plex round-trip. A hung
@@ -756,6 +761,52 @@ app.get("/api/items/:key/details", async (req, res) => {
   } catch (err) {
     console.error("Failed to fetch item details", err.message);
     res.status(502).json({ error: "Could not reach Plex" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Play on TV — send an item to the TV via Home Assistant (tv.js). 404 when not configured.
+// The browsing profile's resume point decides where playback starts on the TV.
+// ---------------------------------------------------------------------------
+
+function sendTvError(res, err, fallback) {
+  if (err instanceof TvError) { res.status(err.status).json({ error: err.userMessage }); return; }
+  console.error(`[tv] ${fallback}:`, err.message);
+  res.status(502).json({ error: fallback });
+}
+
+app.post("/api/items/:key/play-on-tv", async (req, res) => {
+  if (!tv) { res.status(404).end(); return; }
+  if (!req.session.user) { res.status(400).json({ error: "No active profile" }); return; }
+  if (!isValidRatingKey(req.params.key)) { res.status(400).json({ error: "Invalid item" }); return; }
+  try {
+    const d = await fetchPlexJson(`/library/metadata/${req.params.key}`, activeToken(req));
+    const meta = d.MediaContainer.Metadata?.[0];
+    if (!meta) { res.status(404).json({ error: "Item not found" }); return; }
+    await tv.playOnTv({ ratingKey: req.params.key, offsetMs: meta.viewOffset });
+    const title = meta.grandparentTitle ? `${meta.grandparentTitle} - ${meta.title}` : meta.title;
+    res.json({ ok: true, title });
+  } catch (err) {
+    sendTvError(res, err, "Couldn't start playback");
+  }
+});
+
+app.get("/api/tv/state", async (req, res) => {
+  if (!tv) { res.status(404).end(); return; }
+  try {
+    res.json(await tv.getState());
+  } catch (err) {
+    sendTvError(res, err, "Couldn't read the TV");
+  }
+});
+
+app.post("/api/tv/playpause", async (req, res) => {
+  if (!tv) { res.status(404).end(); return; }
+  try {
+    await tv.playPause();
+    res.json({ ok: true });
+  } catch (err) {
+    sendTvError(res, err, "Couldn't reach the TV");
   }
 });
 
@@ -1179,6 +1230,7 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`Plex Kids running on port ${PORT}`);
   console.log(`Plex server: ${PLEX_SERVER}`);
   console.log(`Libraries: ${ALLOWED_LIBRARIES.length ? ALLOWED_LIBRARIES.join(", ") : "all (Plex-controlled per user)"}`);
+  console.log(`TV: ${tv ? `${tvConfig.name} (enabled)` : "disabled"}`);
 
   // Warm the cache immediately so the first page load is fast.
   getCachedItems().catch((err) => console.warn("[cache] Warm-up failed:", err.message));
