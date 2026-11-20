@@ -1,6 +1,6 @@
 # Play on TV — design
 
-Status: draft for owner review · 2026-11-19
+Status: approved by owner · 2026-11-19
 
 ## Intent
 
@@ -116,7 +116,9 @@ deep link works end to end from a sleeping Apple TV). Plex Kids just becomes ano
 
 Rivulet on the TV plays as whichever Rivulet profile is active there, so progress *during* TV
 playback is recorded to that Plex user, not necessarily the kid picked in Plex Kids. The
-browsing profile still decides **where playback starts** (via `offset`). Acceptable for now.
+browsing profile still decides **where playback starts** (via `offset`). Owner accepted this for
+now (2026-11-19). Rivulet's link has no profile parameter today; adding one upstream is the
+likely future fix — out of scope here.
 
 ## Builder's calls
 
@@ -127,6 +129,7 @@ browsing profile still decides **where playback starts** (via `offset`). Accepta
 
 ## Owner setup (outside the repo)
 
-- Create a dedicated non-admin HA user and long-lived token; put it and the entity/URL in the
-  gitignored compose file.
+- HA token: reuse the existing long-lived token of the owner's non-admin HA user that already
+  drives a Rivulet deep-link script (owner's decision). The owner pastes it, with the entity and
+  URL, into the gitignored compose file; nobody else reads or copies it.
 - Rivulet: Settings → Profile Picker → Off (otherwise deep links wait at "Who's watching").
