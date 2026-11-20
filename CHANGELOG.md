@@ -17,6 +17,28 @@ Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git t
   play/pause.
 - `npm test` (built-in `node:test`) with unit tests for the Home Assistant client.
 
+### Fixed before release
+- Home Assistant requests time out after 15 s (one retry on network errors), so a hung HA
+  shows an error instead of leaving the phone on "Sending…".
+- The runtime image now ships `tv.js` (the Dockerfile copied only `server.js`, so the container
+  would have crashed on startup). `tv.env` is excluded from the build context.
+
+### Setup notes
+- `env_file` is read only when the container is created: after editing `tv.env`, run
+  `docker compose up -d plex-kids` — a plain `restart` won't pick it up.
+- Rivulet: set Settings → Profile Picker to **Off**, or links wait at "Who's watching?". A
+  one-time tvOS "Open Rivulet?" prompt may appear the first time.
+
+### Known limitations
+- Rivulet plays as its own active profile, so progress during TV playback is recorded to that
+  Plex user, not the kid browsed in Plex Kids (Rivulet's links have no profile parameter yet).
+- The per-device "Allowed" switch is enforced in the app; the server only requires an active
+  profile session.
+- A double tap while sending can send the same item twice (harmless).
+
+Verified on an Apple TV 4K with Rivulet: woke from sleep, played the tapped episode at the
+profile's resume point, and play/pause worked from the phone.
+
 ## [3.11.0] — 2026-07-15 — Continue Watching fixes + offline progress sync-back
 
 ### Fixed
