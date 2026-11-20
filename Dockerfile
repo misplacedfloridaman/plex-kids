@@ -14,7 +14,7 @@ WORKDIR /app
 RUN apk add --no-cache ffmpeg
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
-COPY server.js .
+COPY server.js tv.js ./
 COPY --from=builder /app/dist ./dist
 ENV NODE_ENV=production
 EXPOSE 6767
