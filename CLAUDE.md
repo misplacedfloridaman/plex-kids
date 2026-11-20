@@ -8,7 +8,7 @@ A YouTube Kids-style web app that streams from a local Plex Media Server, packag
 
 The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kids/plex-kids/`. This directory is the Docker port of that app — tested and confirmed working.
 
-**Current version: v3.12.3** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
+**Current version: v3.12.4** — displayed in the UI below the logo (`PlexKidsLogo.jsx`). Bump the patch version in `PlexKidsLogo.jsx` and this table with every meaningful commit.
 
 **v3.0.0 = Plex-native architecture:** Tailscale Serve (private delivery), Plex Home managed users for identity, and Plex timeline progress sync (Continue Watching = Plex On Deck; localStorage progress retired). Favorites remain local. Remaining v3 work (Phase D): OAuth login flow + open-source prep. See the plan file `nice-seems-to-be-agile-snowglobe.md`.
 
@@ -50,6 +50,7 @@ The canonical reference version (pm2/Node on the Mac mini) lives at `../plex-kid
 | v3.12.1 | Home header fits phones in portrait: logo + profile on top, nav buttons wrap to a full-width row below 700 px (`.pk-header*` classes in `index.css`; landscape/iPad unchanged). Was overflowing sideways at ~390 px. |
 | v3.12.2 | Header polish: `pageStyle` adds `env(safe-area-inset-top)` to its top padding so the home-screen app (black-translucent status bar) clears the clock/Dynamic Island; `<PlexKidsLogo inline />` puts the version right of the logo in page headers (picker keeps it underneath), so the nav-button row sits closer to the logo. |
 | v3.12.3 | Downloads header uses the same `.pk-header` layout (🏠 wraps below the logo on phones instead of running off-screen); profile picker reserves bottom padding so stacked profiles never sit under the pinned ⚙️. |
+| v3.12.4 | Round header nav buttons (🔍 ✨ 📚 ⬇ 📱, Downloads 🏠) are white instead of 15%-white gray — easier to see on black; matches the library view's white ←/🏠. TV toggle stays green when active. |
 
 **Planned: offline downloads** — deferred. The library is MKV; Safari cannot play MKV natively. Blocked until a transcoding or format solution is found.
 

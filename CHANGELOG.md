@@ -3,6 +3,14 @@
 All notable changes to Plex Kids are recorded here, newest first.
 Dates are ISO (YYYY-MM-DD). Versions before 3.10.0 are backfilled from the git tag history.
 
+## [3.12.4] — 2026-11-19 — White nav buttons
+
+### Changed
+- **Header nav buttons are white** (search, customize, libraries, downloads, and the 📱 /
+  🏠 buttons) instead of a dark translucent gray that was hard to see on the black
+  background. Matches the white back/home buttons in the library view; the 📺 toggle stays
+  green while it's sending to the TV.
+
 ## [3.12.3] — 2026-11-19 — Downloads header + profile picker on phones
 
 ### Fixed

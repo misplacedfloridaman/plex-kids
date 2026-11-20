@@ -610,7 +610,7 @@ function App() {
               <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", fontWeight: 700 }}>✈️ Offline</span>
             )}
             {!isOffline && (
-              <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowDownloads(false)} title="Back to home" aria-label="Back to home">
+              <button style={{ ...profileAvatarStyle, backgroundColor: "white", boxShadow: "none" }} onClick={() => setShowDownloads(false)} title="Back to home" aria-label="Back to home">
                 🏠
               </button>
             )}
@@ -740,7 +740,7 @@ function App() {
         <div className="pk-header-actions">
           {tv.enabled && tvAllowed && (
             <button
-              style={{ ...profileAvatarStyle, backgroundColor: onTv ? "#22c55e" : "rgba(255,255,255,0.15)", boxShadow: "none" }}
+              style={{ ...profileAvatarStyle, backgroundColor: onTv ? "#22c55e" : "white", boxShadow: "none" }}
               onClick={togglePlayTarget}
               title={onTv ? `Playing on ${tv.name} — tap to play here` : `Playing here — tap to play on ${tv.name}`}
               aria-label={onTv ? `Playing on ${tv.name}` : "Playing on this device"}
@@ -748,16 +748,16 @@ function App() {
               {onTv ? "📺" : "📱"}
             </button>
           )}
-          <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={openSearch} title="Search">
+          <button style={{ ...profileAvatarStyle, backgroundColor: "white", boxShadow: "none" }} onClick={openSearch} title="Search">
             🔍
           </button>
-          <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowHomeLayout(true)} title="Customize home">
+          <button style={{ ...profileAvatarStyle, backgroundColor: "white", boxShadow: "none" }} onClick={() => setShowHomeLayout(true)} title="Customize home">
             ✨
           </button>
-          <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowLibraryPicker(true)} title="Libraries" aria-label="Libraries">
+          <button style={{ ...profileAvatarStyle, backgroundColor: "white", boxShadow: "none" }} onClick={() => setShowLibraryPicker(true)} title="Libraries" aria-label="Libraries">
             📚
           </button>
-          <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={() => setShowDownloads(true)} title="Downloads" aria-label="Downloads">
+          <button style={{ ...profileAvatarStyle, backgroundColor: "white", boxShadow: "none" }} onClick={() => setShowDownloads(true)} title="Downloads" aria-label="Downloads">
             ⬇
           </button>
         </div>
