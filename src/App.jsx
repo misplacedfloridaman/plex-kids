@@ -34,6 +34,8 @@ import {
 } from "./storage";
 import DownloadsScreen from "./components/DownloadsScreen";
 import { resolveStreamParams } from "./quality";
+import { loadTvAllowed, loadPlayTarget, savePlayTarget, effectiveTarget } from "./tvTarget";
+import TvBar from "./components/TvBar";
 import { downloadManager } from "./downloads/useDownloads";
 
 const API_SERVER = "";
@@ -66,8 +68,26 @@ function App() {
   const libraryOriginRef = useRef("home");
   // Optional "Play on TV" (server-configured) + this device's prefs (see tvTarget.js).
   const [tv, setTv] = useState({ enabled: false, name: "TV" });
+  const [tvAllowed, setTvAllowed] = useState(loadTvAllowed);
+  const [playTarget, setPlayTarget] = useState(loadPlayTarget);
+  const [tvNotice, setTvNotice] = useState(null); // { text, error } from the last send
+  const onTv = effectiveTarget(playTarget, tvAllowed, tv.enabled) === "tv";
 
   const profileId = activeProfile?.uuid;
+
+  // A success message fades after a few seconds; errors stay until the next send.
+  useEffect(() => {
+    if (!tvNotice || tvNotice.error || tvNotice.text.endsWith("…")) return;
+    const timer = setTimeout(() => setTvNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [tvNotice]);
+
+  function togglePlayTarget() {
+    const next = playTarget === "tv" ? "device" : "tv";
+    savePlayTarget(next);
+    setPlayTarget(next);
+    setTvNotice(null);
+  }
 
   useEffect(() => {
     fetch(`${API_SERVER}/api/config`)
@@ -300,6 +320,21 @@ function App() {
 
     const itemIndex = itemList.findIndex((m) => m.key === item.key);
 
+    if (isPlayablePlexItem(item) && onTv) {
+      // This device sends to the TV: the TV plays it from Plex (even if downloaded here).
+      setTvNotice({ text: `Sending to ${tv.name}…`, error: false });
+      try {
+        const r = await fetch(`${API_SERVER}/api/items/${item.key}/play-on-tv`, { method: "POST" });
+        const data = await r.json().catch(() => ({}));
+        setTvNotice(r.ok
+          ? { text: `Playing on ${tv.name}: ${data.title || item.title}`, error: false }
+          : { text: data.error || `Couldn't play on ${tv.name}`, error: true });
+      } catch {
+        setTvNotice({ text: "Couldn't reach Plex Kids", error: true });
+      }
+      return;
+    }
+
     if (isPlayablePlexItem(item)) {
       // Prefer an on-device download when one exists — plays offline, scrubs instantly, no
       // transcode. A blob: URL signals local playback to the player (see usePlayer).
@@ -424,6 +459,8 @@ function App() {
       return (
         <Settings tv={tv} onClose={() => {
           setShowSettings(false);
+          setTvAllowed(loadTvAllowed());
+          setPlayTarget(loadPlayTarget());
           // Always refresh: covers hidden-profile changes AND the cold-start case where
           // signing in as admin just bootstrapped the token (picker was empty before).
           loadProfiles();
@@ -581,6 +618,7 @@ function App() {
         </div>
 
         {player.playerUrl && <Player {...playerProps} />}
+        {onTv && !isOffline && !player.playerUrl && <TvBar tvName={tv.name} notice={tvNotice} />}
 
         <DownloadsScreen onPlay={playItem} />
       </div>
@@ -597,6 +635,7 @@ function App() {
         </div>
 
         {player.playerUrl && <Player {...playerProps} />}
+        {onTv && !player.playerUrl && <TvBar tvName={tv.name} notice={tvNotice} />}
 
         {itemsLoading && <p style={{ fontSize: "24px" }}>Loading items...</p>}
         {!itemsLoading && mediaItems.length === 0 && (
@@ -699,6 +738,16 @@ function App() {
               ? <img src={activeProfile.thumb} alt={activeProfile.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : activeCosmetic.emoji}
           </button>
+          {tv.enabled && tvAllowed && (
+            <button
+              style={{ ...profileAvatarStyle, backgroundColor: onTv ? "#22c55e" : "rgba(255,255,255,0.15)", boxShadow: "none" }}
+              onClick={togglePlayTarget}
+              title={onTv ? `Playing on ${tv.name} — tap to play here` : `Playing here — tap to play on ${tv.name}`}
+              aria-label={onTv ? `Playing on ${tv.name}` : "Playing on this device"}
+            >
+              {onTv ? "📺" : "📱"}
+            </button>
+          )}
           <button style={{ ...profileAvatarStyle, backgroundColor: "rgba(255,255,255,0.15)", boxShadow: "none" }} onClick={openSearch} title="Search">
             🔍
           </button>
@@ -735,6 +784,7 @@ function App() {
       )}
 
       {player.playerUrl && <Player {...playerProps} />}
+      {onTv && !player.playerUrl && <TvBar tvName={tv.name} notice={tvNotice} />}
 
       {searchQuery ? (
         <section style={gridSectionStyle}>
