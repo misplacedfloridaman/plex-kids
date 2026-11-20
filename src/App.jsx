@@ -64,8 +64,17 @@ function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const libraryOriginRef = useRef("home");
+  // Optional "Play on TV" (server-configured) + this device's prefs (see tvTarget.js).
+  const [tv, setTv] = useState({ enabled: false, name: "TV" });
 
   const profileId = activeProfile?.uuid;
+
+  useEffect(() => {
+    fetch(`${API_SERVER}/api/config`)
+      .then((r) => r.json())
+      .then((c) => { if (c.tv) setTv(c.tv); })
+      .catch(() => { /* offline: TV stays off */ });
+  }, []);
 
   // Continue Watching now comes from Plex's On Deck (per active profile), not localStorage.
   async function loadContinue() {
@@ -413,7 +422,7 @@ function App() {
   if (!activeProfile) {
     if (showSettings) {
       return (
-        <Settings onClose={() => {
+        <Settings tv={tv} onClose={() => {
           setShowSettings(false);
           // Always refresh: covers hidden-profile changes AND the cold-start case where
           // signing in as admin just bootstrapped the token (picker was empty before).

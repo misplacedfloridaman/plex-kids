@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { cosmeticFor } from "../profiles";
 import { QUALITY_OPTIONS, loadStreamQuality, saveStreamQuality } from "../quality";
+import { loadTvAllowed, saveTvAllowed, savePlayTarget } from "../tvTarget";
 
 // Settings screen (reached from the profile picker), guarded by a PIN:
 //   - Daily access = enter the PIN (kids don't know it).
 //   - The PIN is set/reset only right after a Plex owner sign-in (OAuth), which also
 //     bootstraps the admin token on a fresh install. "Forgot PIN?" routes through Plex.
 // Modes: loading | pin | plex | setpin | settings
-export default function Settings({ onClose }) {
+export default function Settings({ onClose, tv = { enabled: false, name: "TV" } }) {
   const [mode, setMode] = useState("loading");
   const [pinInput, setPinInput] = useState("");
   const [pin1, setPin1] = useState("");
@@ -20,6 +21,8 @@ export default function Settings({ onClose }) {
   const [lockHomeLayout, setLockHomeLayout] = useState(false);
   // Per-device (localStorage), not server-stored — depends on the network the device is on.
   const [streamQuality, setStreamQuality] = useState(loadStreamQuality);
+  // Per-device too: whether this device may send what's tapped to the TV (kids' devices: off).
+  const [tvAllowed, setTvAllowed] = useState(loadTvAllowed);
   const [saving, setSaving] = useState(false);
 
   const aliveRef = useRef(true);
@@ -105,6 +108,9 @@ export default function Settings({ onClose }) {
     setSaving(true);
     try {
       saveStreamQuality(streamQuality); // device-local, applies immediately on this device
+      // Newly allowing the TV points taps at it; the home-screen pill switches back.
+      if (tvAllowed && !loadTvAllowed()) savePlayTarget("tv");
+      saveTvAllowed(tvAllowed);
       await fetch("/api/settings", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hiddenProfiles: [...hidden], lockHomeLayout }),
@@ -262,6 +268,23 @@ export default function Settings({ onClose }) {
             Lower quality streams use less bandwidth — helps when watching away from home Wi-Fi.
           </p>
         </section>
+
+        {tv.enabled && (
+          <section style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <p style={sectionTitle}>Play on {tv.name} (this device)</p>
+            <div style={row}>
+              <span style={{ flex: 1, fontSize: "18px", fontWeight: "700" }}>
+                Send taps to {tv.name}
+                <span style={{ display: "block", fontSize: "13px", fontWeight: "400", color: "rgba(255,255,255,0.45)" }}>
+                  Lets this device send what you tap to the TV. Leave kids' devices Off.
+                </span>
+              </span>
+              <button onClick={() => setTvAllowed((v) => !v)} style={{ ...btn, padding: "8px 18px", fontSize: "14px", background: tvAllowed ? "#22c55e" : "rgba(255,255,255,0.12)", color: tvAllowed ? "#04210f" : "rgba(255,255,255,0.6)" }}>
+                {tvAllowed ? "Allowed" : "Off"}
+              </button>
+            </div>
+          </section>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: "16px", marginTop: "40px" }}>
